@@ -13,6 +13,7 @@ fn main() {
     match match command.command {
         cli::Commands::Build(command) => build::build(&command),
         cli::Commands::Run(command) => run::run(&command),
+        cli::Commands::MemoryRun(command) => run::memory_run(&command),
         cli::Commands::Clean => clean::clean(),
         cli::Commands::Version => Ok(Some(format!("c-build {}", env!("CARGO_PKG_VERSION")))),
     } {

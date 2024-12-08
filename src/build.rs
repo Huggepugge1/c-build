@@ -87,7 +87,15 @@ fn should_build(path: &str, include: &Include) -> Result<bool, String> {
                     return Ok(created_time > obj_created_time);
                 }
             }
-            Err(e) => println!("Failed to fetch metadata for file: {}", e.to_string()),
+            Err(e) => match e.kind() {
+                std::io::ErrorKind::NotFound => return Ok(true),
+                _ => {
+                    return Err(format!(
+                        "Failed to fetch metadata for file: {}",
+                        e.to_string()
+                    ))
+                }
+            },
         };
     }
     Ok(true)

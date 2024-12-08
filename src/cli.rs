@@ -12,6 +12,8 @@ pub enum Commands {
     Build(Build),
     #[command(version, about, long_about = Some("Runs the project"))]
     Run(Build),
+    #[command(version, about, long_about = Some("Runs the project with memory testing"))]
+    MemoryRun(Build),
     #[command(version, about, long_about = Some("Cleans the project"))]
     Clean,
     #[command(version, about, long_about = Some("Displays the version"))]
