@@ -4,18 +4,19 @@ mod build;
 mod clean;
 mod cli;
 mod command;
-mod file;
+mod includes;
+mod init;
 mod run;
 
 fn main() {
     let command = cli::Cli::parse();
 
     match match command.command {
-        cli::Commands::Build(command) => build::build(&command),
-        cli::Commands::Run(command) => run::run(&command),
-        cli::Commands::MemoryRun(command) => run::memory_run(&command),
+        cli::Commands::Build(build) => build::build(&build),
+        cli::Commands::Run(build) => run::run(&build),
+        cli::Commands::MemoryRun(build) => run::memory_run(&build),
+        cli::Commands::Init(command) => init::init(&command),
         cli::Commands::Clean => clean::clean(),
-        cli::Commands::Version => Ok(Some(format!("c-build {}", env!("CARGO_PKG_VERSION")))),
     } {
         Ok(v) => {
             if let Some(v) = v {

@@ -1,6 +1,11 @@
 use clap::{Parser, Subcommand};
 
 #[derive(Parser, Debug)]
+#[command(
+    name = "c-build",
+    about = "A simple build tool for C projects",
+    version
+)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
@@ -8,40 +13,26 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    #[command(version, about, long_about = Some("Builds the project"))]
+    #[command(about, long_about = Some("Builds the project"))]
     Build(Build),
-    #[command(version, about, long_about = Some("Runs the project"))]
+    #[command(about, long_about = Some("Runs the project"))]
     Run(Build),
-    #[command(version, about, long_about = Some("Runs the project with memory testing"))]
+    #[command(about, long_about = Some("Runs the project with memory testing"))]
     MemoryRun(Build),
-    #[command(version, about, long_about = Some("Cleans the project"))]
+    #[command(about, long_about = Some("Initializes a new project"))]
+    Init(Init),
+    #[command(about, long_about = Some("Cleans the project"))]
     Clean,
-    #[command(version, about, long_about = Some("Displays the version"))]
-    Version,
 }
-
-pub type Run = Build;
 
 #[derive(Parser, Debug)]
 pub struct Build {
-    #[arg(short, long, default_value = "src")]
+    #[arg(short, long, default_value_t = false)]
+    pub release: bool,
+}
+
+#[derive(Parser, Debug)]
+pub struct Init {
+    #[arg(default_value = ".")]
     pub path: String,
-
-    #[arg(short, long, default_value = "c_target/main")]
-    pub output: String,
-
-    #[arg(short, long, default_value_t = true)]
-    pub debug: bool,
-
-    #[arg(short = 'O', long, default_value_t = 2)]
-    pub optimization: u8,
-
-    #[arg(short, long, default_value_t = true)]
-    pub warnings: bool,
-
-    #[arg(short = 'P', long, default_value_t = true)]
-    pub pedantic: bool,
-
-    #[arg(short, long, default_value = "c2x")]
-    pub std: String,
 }
