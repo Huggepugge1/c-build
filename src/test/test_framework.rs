@@ -1,9 +1,9 @@
 use std::io::Write;
 use std::path::PathBuf;
 
-struct Tests {
-    test_files: Vec<PathBuf>,
-    tests: Vec<String>,
+pub struct Tests {
+    pub test_files: Vec<PathBuf>,
+    pub tests: Vec<String>,
 }
 
 const TEST_FRAMEWORK_C: &str = r#"#include "test_framework.h"
@@ -84,7 +84,7 @@ fn get_tests_from_files(test_files: Vec<PathBuf>) -> Tests {
     Tests { test_files, tests }
 }
 
-fn get_tests() -> Tests {
+pub fn get_tests() -> Tests {
     let test_files = get_test_files();
     get_tests_from_files(test_files)
 }
@@ -118,7 +118,7 @@ pub fn write_tests_to_file() {
     file.write_all("struct Test tests[] = {\n".as_bytes())
         .unwrap();
     for test in tests.tests {
-        file.write_all(format!("{{ \"{}\", test_{} }}\n", test, test).as_bytes())
+        file.write_all(format!("{{ \"{}\", test_{} }},\n", test, test).as_bytes())
             .unwrap();
     }
 
