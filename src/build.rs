@@ -190,7 +190,7 @@ fn build_object(include: &mut Include, config: &Config) -> Result<Option<String>
 
     let command = match &include.kind {
         IncludeType::Local(path) => format!(
-            "gcc -c {} -o {}/obj/{} {}",
+            "gcc -fdiagnostics-color=always -c {} -o {}/obj/{} {}",
             path.with_extension("c").to_str().unwrap(),
             get_target(&config.mode),
             get_object_name(include),
@@ -200,17 +200,15 @@ fn build_object(include: &mut Include, config: &Config) -> Result<Option<String>
     };
 
     match command::output(&command) {
-        Ok(output) => {
-            if !output.status.success() {
-                return Err(format!(
-                    "Failed to build object file: {}",
-                    String::from_utf8_lossy(&output.stderr)
-                ));
+        Ok(status) => {
+            if !status.success() {
+                Err(String::from("Failed to build object file: {}"))
+            } else {
+                Ok(Some(String::from("Built tests successfully")))
             }
         }
-        Err(e) => return Err(format!("Failed to run command: {}", e)),
+        Err(e) => Err(format!("Failed to run command: {}", e)),
     }
-    Ok(None)
 }
 
 fn build_object_files(includes: &Vec<Include>, config: &Config) -> Result<Option<String>, String> {
@@ -248,14 +246,11 @@ pub fn build(build: &Build) -> Result<Option<String>, String> {
     );
 
     match command::output(&build_command) {
-        Ok(output) => {
-            if !output.status.success() {
-                Err(format!(
-                    "Failed to build: {}",
-                    String::from_utf8_lossy(&output.stderr)
-                ))
+        Ok(status) => {
+            if !status.success() {
+                Err(String::from("Build not successful"))
             } else {
-                Ok(Some("Build successful".to_string()))
+                Ok(Some(format!("Build successful",)))
             }
         }
         Err(e) => Err(format!("Failed to run command: {}", e)),

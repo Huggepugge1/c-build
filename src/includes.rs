@@ -23,7 +23,7 @@ fn open_file(path: &PathBuf) -> Result<File, std::io::Error> {
     File::open(path)
 }
 
-fn get_includes_from_file(
+pub fn get_includes_from_file(
     path: &Path,
     name: &str,
     already_included: &mut Vec<String>,
