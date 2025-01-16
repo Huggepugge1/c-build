@@ -8,7 +8,6 @@ use std::path::PathBuf;
 
 use serde::Deserialize;
 use std::fs;
-use toml;
 
 #[derive(Debug, Deserialize, Clone, Copy)]
 pub enum Mode {
@@ -122,7 +121,7 @@ fn generate_build_command(includes: &Vec<Include>, config: &Config) -> String {
                 command.push_str(&format!(
                     "{}/obj/{} ",
                     get_target(&config.mode),
-                    get_object_name(&include)
+                    get_object_name(include)
                 ));
             }
             IncludeType::System => (),
@@ -160,12 +159,7 @@ fn should_build(include: &mut Include, config: &Config) -> Result<bool, String> 
                 Err(_) => return Ok(true),
             }) {
                 Ok(metadata) => metadata,
-                Err(e) => {
-                    return Err(format!(
-                        "Failed to fetch metadata for file: {}",
-                        e.to_string()
-                    ))
-                }
+                Err(e) => return Err(format!("Failed to fetch metadata for file: {}", e)),
             };
             if let Ok(created_time) = metadata.modified() {
                 match fs::metadata(
@@ -180,12 +174,7 @@ fn should_build(include: &mut Include, config: &Config) -> Result<bool, String> 
                     }
                     Err(e) => match e.kind() {
                         std::io::ErrorKind::NotFound => return Ok(true),
-                        _ => {
-                            return Err(format!(
-                                "Failed to fetch metadata for file: {}",
-                                e.to_string()
-                            ))
-                        }
+                        _ => return Err(format!("Failed to fetch metadata for file: {}", e)),
                     },
                 };
             }
