@@ -19,27 +19,12 @@ cargo install --path .
 ## Usage
 ### Initializing a new project
 ```bash
-c-builder init <project-name> <options>
+c-builder [options] init [project-name]
 ```
 
 ### Building the project
 ```bash
-c-builder build <options>
-```
-
-### Running the project
-```bash
-c-builder run <options>
-```
-
-### Running the project with memory checks
-```bash
-c-builder memory-run <options>
-```
-
-### Cleaning the project
-```bash
-c-builder clean <options>
+c-builder [options] build
 ```
 
 ### Help
@@ -48,9 +33,43 @@ c-builder --help
 c-builder help
 ```
 
+### Configuration
+The configuration file is located at `~/.config/c-builder/config.toml`. The default configuration is:
+```toml
+[package]
+name = "Your Project"
+version = "0.1.0"
+authors = ["Your Name"]
+src = "src"
+
+[debug]
+debug = true
+optimization = 0
+warnings = true
+pedantic = true
+std = "c2x"
+
+[release]
+debug = false
+optimization = 3
+warnings = true
+pedantic = false
+std = "c2x"
+
+[memory]
+leak_check = "full"
+show_leak_kinds = "all"
+track_origins = true
+```
+
 ## Contributing
 Contributions are welcome! Please read the [contribution guidelines](CONTRIBUTING.md) first.
 
 ## License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-```
+
+## Dependencies
+ - [gcc](https://gcc.gnu.org/)
+ - [valgrind](https://www.valgrind.org/)
+ - [cargo](https://doc.rust-lang.org/cargo/)
+ - [rust](https://www.rust-lang.org/)
