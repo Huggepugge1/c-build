@@ -1,6 +1,6 @@
 use std::fs::File;
 use std::io::BufRead;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::exit;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -14,7 +14,7 @@ pub struct Include {
     pub kind: IncludeType,
 }
 
-fn has_c_file(path: &PathBuf, name: &str) -> bool {
+fn has_c_file(path: &Path, name: &str) -> bool {
     let file = open_file(&path.join(name).with_extension("c"));
     file.is_ok()
 }
@@ -24,7 +24,7 @@ fn open_file(path: &PathBuf) -> Result<File, std::io::Error> {
 }
 
 fn get_includes_from_file(
-    path: &PathBuf,
+    path: &Path,
     name: &str,
     already_included: &mut Vec<String>,
 ) -> Vec<Include> {
@@ -52,6 +52,9 @@ fn get_includes_from_file(
         Ok(_) => true,
         Err(_) => false,
     } {
+        if name == "store.h" {
+            println!("{}", line);
+        }
         if line.starts_with("#include") {
             let include = line
                 .clone()
@@ -98,7 +101,7 @@ fn get_includes_from_file(
 
                 includes.append(&mut get_includes_from_file(
                     &relative_path,
-                    name,
+                    PathBuf::from(name).with_extension("c").to_str().unwrap(),
                     already_included,
                 ));
 

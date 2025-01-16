@@ -30,12 +30,12 @@ pub fn run(args: &Build) -> Result<Option<String>, String> {
 fn get_memory_string(config: &Config) -> String {
     let mut memory_string = String::new();
 
-    if config.memory.leak_check != "" {
+    if !config.memory.leak_check.is_empty() {
         memory_string.push_str("--leak-check=");
         memory_string.push_str(&config.memory.leak_check);
     }
 
-    if config.memory.show_leak_kinds != "" {
+    if !config.memory.show_leak_kinds.is_empty() {
         memory_string.push_str(" --show-leak-kinds=");
         memory_string.push_str(&config.memory.show_leak_kinds);
     }
