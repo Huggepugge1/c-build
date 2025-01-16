@@ -2,7 +2,7 @@ use clap::{Parser, Subcommand};
 
 #[derive(Parser, Debug)]
 #[command(
-    name = "c-build",
+    name = "c-builder",
     about = "A simple build tool for C projects",
     version
 )]
