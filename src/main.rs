@@ -7,6 +7,7 @@ mod command;
 mod includes;
 mod init;
 mod run;
+mod test;
 
 fn main() {
     let command = cli::Cli::parse();
@@ -15,6 +16,8 @@ fn main() {
         cli::Commands::Build(build) => build::build(&build),
         cli::Commands::Run(build) => run::run(&build),
         cli::Commands::MemoryRun(build) => run::memory_run(&build),
+        cli::Commands::Test => test::run::run(),
+        cli::Commands::MemoryTest => test::run::memory_run(),
         cli::Commands::Init(command) => init::init(&command),
         cli::Commands::Clean => clean::clean(),
     } {

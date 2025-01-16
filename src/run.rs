@@ -27,7 +27,7 @@ pub fn run(args: &Build) -> Result<Option<String>, String> {
     }
 }
 
-fn get_memory_string(config: &Config) -> String {
+pub fn get_memory_string(config: &Config) -> String {
     let mut memory_string = String::new();
 
     if !config.memory.leak_check.is_empty() {

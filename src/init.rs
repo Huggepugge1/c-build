@@ -1,5 +1,7 @@
 use crate::cli::Init;
 
+use crate::test::test_framework::create_test_framework;
+
 const SRC_DIR: &str = "src/";
 const MAIN_FILE: &str = "src/main.c";
 
@@ -106,6 +108,7 @@ pub fn init(args: &Init) -> Result<Option<String>, String> {
     create_git_repo(&args.path)?;
     create_git_ignore(&args.path)?;
     create_toml(args)?;
+    create_test_framework(&args.path)?;
 
     Ok(Some("Initialized project".to_string()))
 }
