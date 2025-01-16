@@ -71,7 +71,7 @@ fn create_toml(args: &Init) -> Result<(), String> {
     contents.push_str(&format!("name = \"{}\"\n", name));
     contents.push_str("version = \"0.1.0\"\n");
     contents.push_str("authors = [\"Your Name\"]\n");
-    contents.push_str("src = \"src/\"\n\n");
+    contents.push_str("src = \"src\"\n\n");
 
     contents.push_str("[debug]\n");
     contents.push_str("path = \"c_target/debug/\"\n");
@@ -87,7 +87,12 @@ fn create_toml(args: &Init) -> Result<(), String> {
     contents.push_str("optimization = 3\n");
     contents.push_str("warnings = true\n");
     contents.push_str("pedantic = false\n");
-    contents.push_str("std = \"c2x\"");
+    contents.push_str("std = \"c2x\"\n\n");
+
+    contents.push_str("[memory]\n");
+    contents.push_str("leak_check = \"full\"\n");
+    contents.push_str("show_leak_kinds = \"all\"\n");
+    contents.push_str("track_origins = true\n");
 
     match std::fs::write(toml, contents) {
         Ok(_) => Ok(()),

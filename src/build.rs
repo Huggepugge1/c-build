@@ -1,16 +1,28 @@
-use crate::cli;
+use crate::cli::Build;
 use crate::command;
 use crate::includes::{get_includes, Include, IncludeType};
+
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
+use std::path::PathBuf;
 
 use serde::Deserialize;
 use std::fs;
 use toml;
 
+#[derive(Debug, Deserialize, Clone, Copy)]
+pub enum Mode {
+    Debug,
+    Release,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct Config {
+    pub mode: Option<Mode>,
     pub package: Package,
-    pub debug: Build,
-    pub release: Build,
+    pub debug: BuildArgs,
+    pub release: BuildArgs,
+    pub memory: Memory,
 }
 
 #[derive(Debug, Deserialize)]
@@ -24,8 +36,7 @@ pub struct Package {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Build {
-    pub path: String,
+pub struct BuildArgs {
     debug: bool,
     optimization: u8,
     warnings: bool,
@@ -33,114 +44,172 @@ pub struct Build {
     std: String,
 }
 
-pub fn get_build_options() -> Result<Config, String> {
+#[derive(Debug, Deserialize)]
+pub struct Memory {
+    pub leak_check: String,
+    pub show_leak_kinds: String,
+    pub track_origins: bool,
+}
+
+pub fn get_build_options(build: &Build) -> Result<Config, String> {
     let toml = match fs::read_to_string("c-build.toml") {
         Ok(toml) => toml,
         Err(e) => return Err(format!("Failed to read toml: {}", e)),
     };
-    let build: Config = match toml::from_str(&toml) {
-        Ok(build) => build,
+    let mut config: Config = match toml::from_str(&toml) {
+        Ok(config) => config,
         Err(e) => return Err(format!("Failed to parse toml: {}", e)),
     };
-    Ok(build)
+
+    config.mode = Some(match build.release {
+        true => Mode::Release,
+        false => Mode::Debug,
+    });
+
+    Ok(config)
 }
 
-fn generate_build_command(includes: &Vec<Include>, package: &Package, build: &Build) -> String {
-    let mut command = format!("gcc {}main.c ", package.src);
+fn get_cflags(config: &Config) -> String {
+    let mut cflags = String::new();
+    let build = match config.mode.unwrap() {
+        Mode::Debug => &config.debug,
+        Mode::Release => &config.release,
+    };
+    cflags.push_str(&format!("-O{} ", build.optimization));
+    if build.debug {
+        cflags.push_str("-g ");
+    }
+    if build.warnings {
+        cflags.push_str("-Wall ");
+    }
+    if build.pedantic {
+        cflags.push_str("-pedantic ");
+    }
+    cflags.push_str(&format!("-std={} ", build.std));
+    cflags
+}
+
+pub fn get_target(mode: &Option<Mode>) -> String {
+    match mode.unwrap() {
+        Mode::Debug => "c_target/debug",
+        Mode::Release => "c_target/release",
+    }
+    .to_string()
+}
+
+fn get_object_name(include: &Include) -> String {
+    match &include.kind {
+        IncludeType::Local(path) => {
+            path.file_name()
+                .and_then(|name| name.to_str())
+                .map(|name| {
+                    let mut hasher = DefaultHasher::new();
+                    name.hash(&mut hasher);
+                    hasher.finish().to_string()
+                })
+                .unwrap()
+                + ".o"
+        }
+        IncludeType::System => unreachable!(),
+    }
+}
+
+fn generate_build_command(includes: &Vec<Include>, config: &Config) -> String {
+    let mut command = format!("gcc {}/main.c ", config.package.src);
     for include in includes {
-        match include.r#type {
-            IncludeType::Local => {
+        match &include.kind {
+            IncludeType::Local(_) => {
                 command.push_str(&format!(
-                    "{}obj/{} ",
-                    build.path,
-                    include.name.replace(".h", ".o")
+                    "{}/obj/{} ",
+                    get_target(&config.mode),
+                    get_object_name(&include)
                 ));
             }
             IncludeType::System => (),
         }
     }
 
-    command.push_str(&format!("-o {}{} ", build.path, package.name));
-    command.push_str(&format!("-O{} ", build.optimization));
+    command.push_str(&format!(
+        "-o {}/{} ",
+        get_target(&config.mode),
+        config.package.name
+    ));
+    command.push_str(&get_cflags(config));
 
-    if build.debug {
-        command.push_str("-g ");
-    }
-    if build.warnings {
-        command.push_str("-Wall ");
-    }
-    if build.pedantic {
-        command.push_str("-pedantic ");
-    }
-    command.push_str(&format!("-std={} ", build.std));
     command
 }
 
-fn create_output_directory(build: &Build) {
-    let path = std::path::PathBuf::from(build.path.clone());
+fn create_output_directory(config: &Config) {
+    let path = std::path::PathBuf::from(get_target(&config.mode).clone());
     if !path.exists() {
         fs::create_dir_all(path).expect("Failed to create output directory");
     }
-    let obj_path = std::path::PathBuf::from(format!("{}obj", build.path));
+    let obj_path = std::path::PathBuf::from(format!("{}/obj", get_target(&config.mode)));
     if !obj_path.exists() {
         fs::create_dir_all(obj_path).expect("Failed to create output directory");
     }
 }
 
-fn should_build(include: &Include, package: &Package, build: &Build) -> Result<bool, String> {
-    let metadata = match fs::metadata(format!(
-        "{}{}",
-        package.src,
-        include.name.replace(".h", ".c")
-    )) {
-        Ok(metadata) => metadata,
-        Err(e) => {
-            return Err(format!(
-                "Failed to fetch metadata for file: {}",
-                e.to_string()
-            ))
-        }
-    };
-    if let Ok(created_time) = metadata.modified() {
-        match fs::metadata(format!(
-            "{}obj/{}",
-            build.path,
-            include.name.replace(".h", ".o")
-        )) {
-            Ok(metadata) => {
-                if let Ok(obj_created_time) = metadata.modified() {
-                    return Ok(created_time > obj_created_time);
-                }
-            }
-            Err(e) => match e.kind() {
-                std::io::ErrorKind::NotFound => return Ok(true),
-                _ => {
+fn should_build(include: &mut Include, config: &Config) -> Result<bool, String> {
+    match &include.kind {
+        IncludeType::System => return Ok(false),
+        IncludeType::Local(path) => {
+            let path = std::path::PathBuf::from(&config.package.src).join(path);
+            let metadata = match fs::metadata(match path.with_extension("c").canonicalize() {
+                Ok(path) => path,
+                Err(_) => return Ok(true),
+            }) {
+                Ok(metadata) => metadata,
+                Err(e) => {
                     return Err(format!(
                         "Failed to fetch metadata for file: {}",
                         e.to_string()
                     ))
                 }
-            },
-        };
+            };
+            if let Ok(created_time) = metadata.modified() {
+                match fs::metadata(
+                    PathBuf::from(get_target(&config.mode))
+                        .join("obj")
+                        .join(get_object_name(include)),
+                ) {
+                    Ok(metadata) => {
+                        if let Ok(obj_created_time) = metadata.modified() {
+                            return Ok(created_time > obj_created_time);
+                        }
+                    }
+                    Err(e) => match e.kind() {
+                        std::io::ErrorKind::NotFound => return Ok(true),
+                        _ => {
+                            return Err(format!(
+                                "Failed to fetch metadata for file: {}",
+                                e.to_string()
+                            ))
+                        }
+                    },
+                };
+            }
+        }
     }
     Ok(true)
 }
 
-fn build_object(
-    include: &Include,
-    package: &Package,
-    build: &Build,
-) -> Result<Option<String>, String> {
-    if !should_build(include, package, build)? {
+fn build_object(include: &mut Include, config: &Config) -> Result<Option<String>, String> {
+    if !should_build(include, config)? {
         return Ok(None);
     }
-    let command = format!(
-        "gcc -c {}{} -o {}obj/{}",
-        package.src,
-        include.name.replace(".h", ".c"),
-        build.path,
-        include.name.replace(".h", ".o")
-    );
+
+    let command = match &include.kind {
+        IncludeType::Local(path) => format!(
+            "gcc -c {} -o {}/obj/{} {}",
+            path.with_extension("c").to_str().unwrap(),
+            get_target(&config.mode),
+            get_object_name(include),
+            get_cflags(config),
+        ),
+        IncludeType::System => "".to_string(),
+    };
+
     match command::output(&command) {
         Ok(output) => {
             if !output.status.success() {
@@ -155,14 +224,10 @@ fn build_object(
     Ok(None)
 }
 
-fn build_object_files(
-    includes: &Vec<Include>,
-    package: &Package,
-    build: &Build,
-) -> Result<Option<String>, String> {
+fn build_object_files(includes: &Vec<Include>, config: &Config) -> Result<Option<String>, String> {
     for include in includes {
-        match include.r#type {
-            IncludeType::Local => match build_object(include, package, build) {
+        match &include.kind {
+            IncludeType::Local(_path) => match build_object(&mut include.clone(), config) {
                 Ok(Some(v)) => println!("{}", v),
                 Ok(None) => (),
                 Err(e) => return Err(e),
@@ -173,33 +238,26 @@ fn build_object_files(
     Ok(None)
 }
 
-pub fn build(build: &cli::Build) -> Result<Option<String>, String> {
-    let config: Config = match get_build_options() {
+pub fn build(build: &Build) -> Result<Option<String>, String> {
+    let config: Config = match get_build_options(build) {
         Ok(config) => config,
         Err(e) => return Err(e),
     };
-    let package = config.package;
-    let build = if build.release {
-        config.release
-    } else {
-        config.debug
-    };
 
-    let path = std::path::PathBuf::from(&package.src);
-    let includes = match get_includes(path) {
-        Ok(includes) => includes,
-        Err(error) => {
-            eprintln!("Failed to fetch dependencies: {}", error);
-            std::process::exit(1);
-        }
-    };
+    let path = std::path::PathBuf::from(&config.package.src);
+    let includes = get_includes(path);
 
-    let build_command = generate_build_command(&includes, &package, &build);
+    create_output_directory(&config);
+    build_object_files(&includes, &config)?;
 
-    create_output_directory(&build);
-    build_object_files(&includes, &package, &build)?;
+    let build_command = generate_build_command(&includes, &config);
 
-    println!("Building {}{}", build.path, package.name);
+    println!(
+        "Building {}/{}",
+        get_target(&config.mode),
+        config.package.name
+    );
+
     match command::output(&build_command) {
         Ok(output) => {
             if !output.status.success() {

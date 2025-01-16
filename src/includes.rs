@@ -1,50 +1,52 @@
 use std::fs::File;
 use std::io::BufRead;
 use std::path::PathBuf;
+use std::process::exit;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum IncludeType {
     System,
-    Local,
+    Local(PathBuf),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Include {
-    pub name: String,
-    pub r#type: IncludeType,
+    pub kind: IncludeType,
 }
 
-fn open_file(path: &PathBuf, name: &str) -> Result<File, std::io::Error> {
-    File::open(PathBuf::from(format!(
-        "{}/{}",
-        path.to_str().unwrap(),
-        name
-    )))
+fn has_c_file(path: &PathBuf, name: &str) -> bool {
+    let file = open_file(&path.join(name).with_extension("c"));
+    file.is_ok()
+}
+
+fn open_file(path: &PathBuf) -> Result<File, std::io::Error> {
+    File::open(path)
 }
 
 fn get_includes_from_file(
     path: &PathBuf,
     name: &str,
     already_included: &mut Vec<String>,
-) -> Result<Vec<Include>, std::io::Error> {
+) -> Vec<Include> {
     if already_included.contains(&name.to_string()) {
-        return Ok(Vec::new());
+        return Vec::new();
     }
     already_included.push(name.to_string());
 
     let mut includes = Vec::new();
 
-    let file = match open_file(path, name) {
+    let file = match open_file(&path.join(name)) {
         Ok(file) => file,
-        Err(e) => {
-            return Err(std::io::Error::new(
-                e.kind(),
-                format!("{}   {}/{}", e.to_string(), path.to_str().unwrap(), name),
-            ))
+        Err(_) => {
+            eprintln!("Failed to open file: {}/{}", path.to_str().unwrap(), name);
+            exit(1);
         }
     };
+
     let mut contents = std::io::BufReader::new(file);
+
     let mut line: String = String::new();
+
     while match contents.read_line(&mut line) {
         Ok(0) => false,
         Ok(_) => true,
@@ -58,7 +60,7 @@ fn get_includes_from_file(
                 .trim()
                 .to_string();
 
-            let name = &include[1..include.len() - 1];
+            let mut name = &include[1..include.len() - 1];
 
             if already_included.contains(&name.to_string()) {
                 line.clear();
@@ -66,29 +68,60 @@ fn get_includes_from_file(
             }
 
             if include.starts_with("\"") {
+                let name_as_path = PathBuf::from(name);
+
+                let relative_path = if let Some(parent) = name_as_path.parent() {
+                    name = name_as_path.file_name().unwrap().to_str().unwrap();
+                    path.join(parent)
+                } else {
+                    path.to_path_buf()
+                }
+                .canonicalize()
+                .unwrap();
+
+                if !has_c_file(&relative_path, name) {
+                    if !already_included.contains(&name.to_string()) {
+                        println!(
+                            "Note: Included header file `{}/{}`, has no corresponding source file",
+                            relative_path.to_str().unwrap(),
+                            name
+                        );
+                        already_included.push(name.to_string());
+                    }
+                    line.clear();
+                    continue;
+                }
+
                 includes.push(Include {
-                    name: name.to_string(),
-                    r#type: IncludeType::Local,
+                    kind: IncludeType::Local(relative_path.join(name)),
                 });
-                includes.append(&mut get_includes_from_file(path, name, already_included)?);
+
                 includes.append(&mut get_includes_from_file(
-                    path,
-                    &(name[0..name.len() - 1].to_string() + "c"),
+                    &relative_path,
+                    name,
                     already_included,
-                )?);
+                ));
+
+                includes.append(&mut get_includes_from_file(
+                    &relative_path,
+                    PathBuf::from(name).with_extension("c").to_str().unwrap(),
+                    already_included,
+                ));
             } else {
                 includes.push(Include {
-                    name: name.to_string(),
-                    r#type: IncludeType::System,
+                    kind: IncludeType::System,
                 });
                 already_included.push(name.to_string());
             }
         }
         line.clear();
     }
-    Ok(includes)
+    includes
 }
 
-pub fn get_includes(path: PathBuf) -> Result<Vec<Include>, std::io::Error> {
-    get_includes_from_file(&path, "main.c", &mut Vec::new())
+pub fn get_includes(path: PathBuf) -> Vec<Include> {
+    let mut includes = get_includes_from_file(&path, "main.c", &mut Vec::new());
+    includes.sort();
+    includes.dedup();
+    includes
 }
