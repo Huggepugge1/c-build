@@ -24,7 +24,7 @@ pub struct Config {
     pub memory: Memory,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 pub struct Package {
     pub name: String,
     #[allow(dead_code)]
@@ -34,7 +34,7 @@ pub struct Package {
     src: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 pub struct BuildArgs {
     debug: bool,
     optimization: u8,
@@ -259,5 +259,140 @@ pub fn build(build: &Build) -> Result<Option<String>, String> {
             }
         }
         Err(e) => Err(format!("Failed to run command: {}", e)),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_build_options() {
+        let build = Build { release: false };
+        let config = get_build_options(&build);
+        assert_eq!(config.is_ok(), false);
+    }
+
+    #[test]
+    fn test_get_cflags() {
+        let config = Config {
+            mode: Some(Mode::Debug),
+            package: Package {
+                name: "test".to_string(),
+                src: "src".to_string(),
+                ..Default::default()
+            },
+            debug: BuildArgs {
+                debug: true,
+                optimization: 0,
+                warnings: false,
+                pedantic: false,
+                std: "c11".to_string(),
+            },
+            release: BuildArgs {
+                debug: false,
+                optimization: 0,
+                warnings: false,
+                pedantic: false,
+                std: "c11".to_string(),
+            },
+            memory: Memory {
+                leak_check: "".to_string(),
+                show_leak_kinds: "".to_string(),
+                track_origins: false,
+            },
+        };
+        assert_eq!(get_cflags(&config), "-O0 -g -std=c11 ");
+    }
+
+    #[test]
+    fn test_get_cflags_all() {
+        let mut config = Config {
+            mode: Some(Mode::Debug),
+            package: Package {
+                name: "test".to_string(),
+                src: "src".to_string(),
+                ..Default::default()
+            },
+            debug: BuildArgs {
+                debug: true,
+                optimization: 0,
+                warnings: true,
+                pedantic: true,
+                std: "c11".to_string(),
+            },
+            release: BuildArgs {
+                debug: false,
+                optimization: 3,
+                warnings: true,
+                pedantic: true,
+                std: "c11".to_string(),
+            },
+            memory: Memory {
+                leak_check: "".to_string(),
+                show_leak_kinds: "".to_string(),
+                track_origins: false,
+            },
+        };
+        assert_eq!(get_cflags(&config), "-O0 -g -Wall -pedantic -std=c11 ");
+        config.mode = Some(Mode::Release);
+        assert_eq!(get_cflags(&config), "-O3 -Wall -pedantic -std=c11 ");
+    }
+
+    #[test]
+    fn test_get_target() {
+        assert_eq!(get_target(&Some(Mode::Debug)), "c_target/debug");
+        assert_eq!(get_target(&Some(Mode::Release)), "c_target/release");
+    }
+
+    #[test]
+    fn test_get_object_name() {
+        let include = Include {
+            kind: IncludeType::Local(PathBuf::from("test.c")),
+        };
+        assert_eq!(get_object_name(&include), "5868638564572808266.o");
+    }
+
+    #[test]
+    fn test_generate_build_command() {
+        let includes = vec![
+            Include {
+                kind: IncludeType::Local(PathBuf::from("test.c")),
+            },
+            Include {
+                kind: IncludeType::Local(PathBuf::from("test2.c")),
+            },
+        ];
+        let config = Config {
+            mode: Some(Mode::Debug),
+            package: Package {
+                name: "test".to_string(),
+                src: "src".to_string(),
+                ..Default::default()
+            },
+            debug: BuildArgs {
+                debug: true,
+                optimization: 0,
+                warnings: false,
+                pedantic: false,
+                std: "c11".to_string(),
+            },
+            release: BuildArgs {
+                debug: false,
+                optimization: 0,
+                warnings: false,
+                pedantic: false,
+                std: "c11".to_string(),
+            },
+            memory: Memory {
+                leak_check: "".to_string(),
+                show_leak_kinds: "".to_string(),
+                track_origins: false,
+            },
+        };
+        assert_eq!(
+            generate_build_command(&includes, &config),
+            "gcc src/main.c c_target/debug/obj/5868638564572808266.o c_target/debug/obj/10537904563806491211.o -o c_target/debug/test -O0 -g -std=c11 "
+        );
     }
 }

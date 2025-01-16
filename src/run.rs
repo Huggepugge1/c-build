@@ -82,3 +82,48 @@ pub fn memory_run(args: &Build) -> Result<Option<String>, String> {
         Err(e) => Err(format!("Failed to wait for command: {}", e)),
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::build::{Memory, Mode};
+
+    #[test]
+    fn test_get_memory_string() {
+        let config = Config {
+            package: Default::default(),
+            mode: Some(Mode::Debug),
+            debug: Default::default(),
+            release: Default::default(),
+            memory: Memory {
+                leak_check: "full".to_string(),
+                show_leak_kinds: "definite".to_string(),
+                track_origins: true,
+            },
+        };
+
+        let memory_string = get_memory_string(&config);
+        assert_eq!(
+            memory_string,
+            "--leak-check=full --show-leak-kinds=definite --track-origins=yes"
+        );
+    }
+
+    #[test]
+    fn test_get_memory_string_empty() {
+        let config = Config {
+            package: Default::default(),
+            mode: Some(Mode::Debug),
+            debug: Default::default(),
+            release: Default::default(),
+            memory: Memory {
+                leak_check: "".to_string(),
+                show_leak_kinds: "".to_string(),
+                track_origins: false,
+            },
+        };
+
+        let memory_string = get_memory_string(&config);
+        assert_eq!(memory_string, " --track-origins=no");
+    }
+}

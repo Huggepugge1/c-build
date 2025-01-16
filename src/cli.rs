@@ -36,3 +36,63 @@ pub struct Init {
     #[arg(default_value = ".")]
     pub path: String,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_build() {
+        let args = Cli::parse_from(&["c-builder", "build"]);
+        assert!(matches!(args.command, Commands::Build(_)));
+    }
+
+    #[test]
+    fn test_build_release() {
+        let args = Cli::parse_from(&["c-builder", "build", "--release"]);
+        assert!(matches!(args.command, Commands::Build(_)));
+    }
+
+    #[test]
+    fn test_run() {
+        let args = Cli::parse_from(&["c-builder", "run"]);
+        assert!(matches!(args.command, Commands::Run(_)));
+    }
+
+    #[test]
+    fn test_run_release() {
+        let args = Cli::parse_from(&["c-builder", "run", "--release"]);
+        assert!(matches!(args.command, Commands::Run(_)));
+    }
+
+    #[test]
+    fn test_memory_run() {
+        let args = Cli::parse_from(&["c-builder", "memory-run"]);
+        assert!(matches!(args.command, Commands::MemoryRun(_)));
+    }
+
+    #[test]
+    fn test_memory_run_release() {
+        let args = Cli::parse_from(&["c-builder", "memory-run", "--release"]);
+        assert!(matches!(args.command, Commands::MemoryRun(_)));
+    }
+
+    #[test]
+    fn test_init() {
+        let args = Cli::parse_from(&["c-builder", "init"]);
+        assert!(matches!(args.command, Commands::Init(_)));
+
+        let path = String::from("test");
+        let args = Cli::parse_from(&["c-builder", "init", &path]);
+        match args.command {
+            Commands::Init(init) => assert_eq!(init.path, path),
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn test_clean() {
+        let args = Cli::parse_from(&["c-builder", "clean"]);
+        assert!(matches!(args.command, Commands::Clean));
+    }
+}

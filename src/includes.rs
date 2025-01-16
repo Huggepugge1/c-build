@@ -73,14 +73,24 @@ fn get_includes_from_file(
             if include.starts_with("\"") {
                 let name_as_path = PathBuf::from(name);
 
-                let relative_path = if let Some(parent) = name_as_path.parent() {
+                let relative_path = match if let Some(parent) = name_as_path.parent() {
                     name = name_as_path.file_name().unwrap().to_str().unwrap();
                     path.join(parent)
                 } else {
                     path.to_path_buf()
                 }
                 .canonicalize()
-                .unwrap();
+                {
+                    Ok(path) => path,
+                    Err(_) => {
+                        eprintln!(
+                            "Note: Included header file `{}/{}` not found",
+                            path.to_str().unwrap(),
+                            name
+                        );
+                        continue;
+                    }
+                };
 
                 if !has_c_file(&relative_path, name) {
                     if !already_included.contains(&name.to_string()) {
@@ -127,4 +137,36 @@ pub fn get_includes(path: PathBuf) -> Vec<Include> {
     includes.sort();
     includes.dedup();
     includes
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_includes() {
+        let includes = get_includes(PathBuf::from("examples/tests/src"));
+        println!("{:?}", includes);
+        assert_eq!(includes.len(), 3);
+        assert_eq!(
+            includes.contains(&Include {
+                kind: IncludeType::Local(
+                    PathBuf::from("examples/tests/src/testing.c")
+                        .canonicalize()
+                        .unwrap()
+                )
+            }),
+            true
+        );
+        assert_eq!(
+            includes.contains(&Include {
+                kind: IncludeType::Local(
+                    PathBuf::from("examples/tests/src/test.h")
+                        .canonicalize()
+                        .unwrap()
+                )
+            }),
+            true
+        );
+    }
 }
