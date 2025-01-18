@@ -33,14 +33,17 @@ c-builder --help
 c-builder help
 ```
 
+See more detailed information in [documentation](docs/main.md).
+
 ### Configuration
 The configuration file is located at `~/.config/c-builder/config.toml`. The default configuration is:
 ```toml
 [package]
 name = "Your Project"
 version = "0.1.0"
-authors = ["Your Name"]
+authors = ["Your Names"]
 src = "src"
+benchmarks = "benchmarks"
 
 [debug]
 debug = true
@@ -73,3 +76,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
  - [valgrind](https://www.valgrind.org/)
  - [cargo](https://doc.rust-lang.org/cargo/)
  - [rust](https://www.rust-lang.org/)
+ - [gprof](https://sourceware.org/binutils/docs/gprof/)
