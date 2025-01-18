@@ -1,6 +1,8 @@
 # c-builder
 `c-builder` aims to simplify the process of building, running, testing and benchmarking C projects.
 
+For information about the custom testing framework, see [here](./testing.md)
+
 ## Table of contents
  - [Features](#features)
  - [Installation](#installation)
@@ -36,7 +38,7 @@ You can specify the release mode with the `-r` or `--release` flag.
 
 #### Notes
  - Memory leak detection is available for both debug and release mode.
- - Debug mode is used by default in the tests but this can be changed with the `-r` flag.
+ - Debug mode is used by default in the tests but this can be changed with the `-r` or `--release` flag.
  - The benchmarks are always built in release mode.
 
 ### Initializing a New Project
@@ -55,6 +57,9 @@ c-builder [options] build
  - `-b --benchmark`: Build the benchmarks
  - `-h --help`: Display help information
 
+#### Notes
+ - The `release` and `benchmark` flags are exclusive and cannot be used together.
+
 ### Running
 ```bash
 c-builder [options] run
@@ -63,6 +68,9 @@ c-builder [options] run
  - `-r --release`: Run the project in release mode
  - `-b --benchmark`: Run the benchmarks
  - `-h --help`: Display help information
+
+#### Notes
+ - The `release` and `benchmark` flags are exclusive and cannot be used together.
 
 ### Testing
 ```bash

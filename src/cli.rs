@@ -31,15 +31,32 @@ pub enum Commands {
 
 #[derive(Parser, Debug)]
 pub struct Build {
-    #[arg(short, long, default_value_t = false, help = "Builds in release mode")]
+    #[arg(
+        short,
+        long,
+        default_value_t = false,
+        help = "Builds in release mode",
+        conflicts_with = "benchmark"
+    )]
     pub release: bool,
-    #[arg(short, long, default_value_t = false, help = "Run the benchmarks")]
+    #[arg(
+        short,
+        long,
+        default_value_t = false,
+        help = "Run the benchmarks",
+        conflicts_with = "release"
+    )]
     pub benchmark: bool,
 }
 
 #[derive(Parser, Debug)]
 pub struct Test {
-    #[arg(short, long, default_value_t = false, help = "Builds in release mode")]
+    #[arg(
+        short,
+        long,
+        default_value_t = false,
+        help = "Run tests in release mode"
+    )]
     pub release: bool,
 }
 
