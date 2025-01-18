@@ -1,26 +1,11 @@
 use super::test_framework;
+
+use crate::build::{
+    build_object_files, create_output_directory, generate_build_command, get_build_options,
+};
+use crate::cli::Build;
 use crate::command::output;
 use crate::includes::{get_includes_from_file, Include};
-
-fn generate_build_command(includes: Vec<Include>) -> String {
-    let mut command = String::from(
-        "gcc -fdiagnostics-color=always -g -O0 -Wall -pedantic -o c_target/test/test tests/tests.c ",
-    );
-
-    for include in includes {
-        match include.kind {
-            crate::includes::IncludeType::Local(path) => {
-                let path = path.with_extension("c");
-                let path = path.to_str().unwrap();
-                command.push_str(path);
-                command.push(' ');
-            }
-            crate::includes::IncludeType::System => (),
-        }
-    }
-
-    command
-}
 
 fn get_test_includes() -> Vec<Include> {
     let mut includes = Vec::new();
@@ -43,20 +28,19 @@ fn get_test_includes() -> Vec<Include> {
     includes
 }
 
-pub fn build() -> Result<Option<String>, String> {
-    println!("Building tests...");
+pub fn build(build: &Build) -> Result<Option<String>, String> {
+    let config = get_build_options(build)?;
 
+    println!("Building tests...");
+    create_output_directory(&config)?;
     test_framework::write_tests_to_file();
 
-    let target_dir = "c_target/test";
-    match std::fs::create_dir_all(target_dir) {
-        Ok(_) => (),
-        Err(e) => return Err(format!("Failed to create target directory: {}", e)),
-    }
-
     let includes = get_test_includes();
+    build_object_files(&includes, &config)?;
 
-    let command = generate_build_command(includes);
+    let main_file = "tests/tests.c";
+    let command = generate_build_command(&includes, &config, main_file);
+
     match output(&command) {
         Ok(status) => {
             if status.success() {

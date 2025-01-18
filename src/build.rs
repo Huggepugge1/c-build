@@ -113,8 +113,8 @@ fn get_object_name(include: &Include) -> String {
     }
 }
 
-fn generate_build_command(includes: &Vec<Include>, config: &Config) -> String {
-    let mut command = format!("gcc {}/main.c ", config.package.src);
+pub fn generate_build_command(includes: &Vec<Include>, config: &Config, main_file: &str) -> String {
+    let mut command = format!("gcc {} ", main_file);
     for include in includes {
         match &include.kind {
             IncludeType::Local(_) => {
@@ -131,21 +131,33 @@ fn generate_build_command(includes: &Vec<Include>, config: &Config) -> String {
     command.push_str(&format!(
         "-o {}/{} ",
         get_target(&config.mode),
-        config.package.name
+        if main_file.ends_with("tests.c") {
+            "test"
+        } else {
+            &config.package.name
+        }
     ));
     command.push_str(&get_cflags(config));
 
     command
 }
 
-fn create_output_directory(config: &Config) {
+pub fn create_output_directory(config: &Config) -> Result<Option<String>, String> {
     let path = std::path::PathBuf::from(get_target(&config.mode).clone());
     if !path.exists() {
-        fs::create_dir_all(path).expect("Failed to create output directory");
+        match fs::create_dir_all(path) {
+            Ok(_) => (),
+            Err(e) => return Err(format!("Failed to create output directory: {}", e)),
+        }
     }
     let obj_path = std::path::PathBuf::from(format!("{}/obj", get_target(&config.mode)));
     if !obj_path.exists() {
-        fs::create_dir_all(obj_path).expect("Failed to create output directory");
+        match fs::create_dir_all(obj_path) {
+            Ok(_) => Ok(None),
+            Err(e) => Err(format!("Failed to create output directory: {}", e)),
+        }
+    } else {
+        Ok(None)
     }
 }
 
@@ -211,7 +223,10 @@ fn build_object(include: &mut Include, config: &Config) -> Result<Option<String>
     }
 }
 
-fn build_object_files(includes: &Vec<Include>, config: &Config) -> Result<Option<String>, String> {
+pub fn build_object_files(
+    includes: &Vec<Include>,
+    config: &Config,
+) -> Result<Option<String>, String> {
     for include in includes {
         match &include.kind {
             IncludeType::Local(_path) => match build_object(&mut include.clone(), config) {
@@ -234,10 +249,12 @@ pub fn build(build: &Build) -> Result<Option<String>, String> {
     let path = std::path::PathBuf::from(&config.package.src);
     let includes = get_includes(path);
 
-    create_output_directory(&config);
+    create_output_directory(&config)?;
     build_object_files(&includes, &config)?;
 
-    let build_command = generate_build_command(&includes, &config);
+    let main_file = format!("{}/main.c", &config.package.src);
+
+    let build_command = generate_build_command(&includes, &config, &main_file);
 
     println!(
         "Building {}/{}",
@@ -248,9 +265,9 @@ pub fn build(build: &Build) -> Result<Option<String>, String> {
     match command::output(&build_command) {
         Ok(status) => {
             if !status.success() {
-                Err(String::from("Build not successful"))
+                Err("Build not successful".to_string())
             } else {
-                Ok(Some(format!("Build successful",)))
+                Ok(Some("Build successful".to_string()))
             }
         }
         Err(e) => Err(format!("Failed to run command: {}", e)),
@@ -386,7 +403,7 @@ mod tests {
             },
         };
         assert_eq!(
-            generate_build_command(&includes, &config),
+            generate_build_command(&includes, &config, "src/main.c"),
             "gcc src/main.c c_target/debug/obj/5868638564572808266.o c_target/debug/obj/10537904563806491211.o -o c_target/debug/test -O0 -g -std=c11 "
         );
     }
