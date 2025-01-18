@@ -7,7 +7,11 @@ pub fn run(args: &Build) -> Result<String, String> {
 
     let config = get_build_options(args)?;
 
-    let command = format!("./{}/{}", get_target(&config.mode), config.package.name);
+    let command = if args.benchmark {
+        format!("{}/benchmark", get_target(&config))
+    } else {
+        format!("{}/{}", get_target(&config), &config.package.name)
+    };
 
     println!("Running {}", command);
     let mut process = match command::spawn(&command) {
@@ -18,7 +22,25 @@ pub fn run(args: &Build) -> Result<String, String> {
     };
 
     match process.wait() {
-        Ok(_) => Ok("".to_string()),
+        Ok(_) => {
+            if args.benchmark {
+                println!("--------------------------------------------------------");
+
+                match command::spawn(&format!("gprof --brief {}/benchmark", get_target(&config))) {
+                    Ok(mut process) => match process.wait() {
+                        Ok(_) => Ok("".to_string()),
+                        Err(e) => {
+                            return Err(format!("Failed to wait for command: {}", e));
+                        }
+                    },
+                    Err(error) => {
+                        return Err(format!("Failed to run command: {}", error));
+                    }
+                }
+            } else {
+                Ok("".to_string())
+            }
+        }
         Err(e) => Err(format!("Failed to wait for command: {}", e)),
     }
 }
@@ -55,9 +77,14 @@ pub fn memory_run(args: &Build) -> Result<String, String> {
     let command = format!(
         "valgrind {} ./{}/{}",
         memory_string,
-        get_target(&config.mode),
-        config.package.name
+        get_target(&config),
+        if args.benchmark {
+            "benchmark"
+        } else {
+            &config.package.name
+        }
     );
+
     println!("Running {}", command);
     let mut process = match command::spawn(&command) {
         Ok(process) => process,
@@ -82,6 +109,7 @@ mod test {
         let config = Config {
             package: Default::default(),
             mode: Some(Mode::Debug),
+            benchmark: Some(false),
             debug: Default::default(),
             release: Default::default(),
             memory: Memory {
@@ -103,6 +131,7 @@ mod test {
         let config = Config {
             package: Default::default(),
             mode: Some(Mode::Debug),
+            benchmark: Some(false),
             debug: Default::default(),
             release: Default::default(),
             memory: Memory {

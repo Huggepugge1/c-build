@@ -19,6 +19,7 @@ pub enum Mode {
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub mode: Option<Mode>,
+    pub benchmark: Option<bool>,
     pub package: Package,
     pub debug: BuildArgs,
     pub release: BuildArgs,
@@ -33,6 +34,7 @@ pub struct Package {
     #[allow(dead_code)]
     authors: Vec<String>,
     src: String,
+    benchmark: String,
 }
 
 #[derive(Debug, Deserialize, Default)]
@@ -66,6 +68,8 @@ pub fn get_build_options(build: &Build) -> Result<Config, String> {
         false => Mode::Debug,
     });
 
+    config.benchmark = Some(build.benchmark);
+
     Ok(config)
 }
 
@@ -86,13 +90,21 @@ fn get_cflags(config: &Config) -> String {
         cflags.push_str("-pedantic ");
     }
     cflags.push_str(&format!("-std={} ", build.std));
+
+    if config.benchmark.unwrap() {
+        cflags.push_str("-pg ");
+    }
+
     cflags
 }
 
-pub fn get_target(mode: &Option<Mode>) -> String {
-    match mode.unwrap() {
-        Mode::Debug => "c_target/debug",
-        Mode::Release => "c_target/release",
+pub fn get_target(config: &Config) -> String {
+    match config.benchmark.unwrap() {
+        true => "c_target/benchmark",
+        false => match config.mode.unwrap() {
+            Mode::Debug => "c_target/debug",
+            Mode::Release => "c_target/release",
+        },
     }
     .to_string()
 }
@@ -115,13 +127,13 @@ fn get_object_name(include: &Include) -> String {
 }
 
 pub fn generate_build_command(includes: &Vec<Include>, config: &Config, main_file: &str) -> String {
-    let mut command = format!("gcc {} ", main_file);
+    let mut command = format!("gcc {} {} ", &get_cflags(config), main_file);
     for include in includes {
         match &include.kind {
             IncludeType::Local(_) => {
                 command.push_str(&format!(
                     "{}/obj/{} ",
-                    get_target(&config.mode),
+                    get_target(config),
                     get_object_name(include)
                 ));
             }
@@ -131,27 +143,28 @@ pub fn generate_build_command(includes: &Vec<Include>, config: &Config, main_fil
 
     command.push_str(&format!(
         "-o {}/{} ",
-        get_target(&config.mode),
+        get_target(config),
         if main_file.ends_with("tests.c") {
             "test"
+        } else if config.benchmark.unwrap() {
+            "benchmark"
         } else {
             &config.package.name
         }
     ));
-    command.push_str(&get_cflags(config));
 
     command
 }
 
 pub fn create_output_directory(config: &Config) -> Result<(), String> {
-    let path = std::path::PathBuf::from(get_target(&config.mode).clone());
+    let path = std::path::PathBuf::from(get_target(config).clone());
     if !path.exists() {
         match fs::create_dir_all(path) {
             Ok(_) => (),
             Err(e) => return Err(format!("Failed to create output directory: {}", e)),
         }
     }
-    let obj_path = std::path::PathBuf::from(format!("{}/obj", get_target(&config.mode)));
+    let obj_path = std::path::PathBuf::from(format!("{}/obj", get_target(config)));
     if !obj_path.exists() {
         match fs::create_dir_all(obj_path) {
             Ok(_) => Ok(()),
@@ -176,7 +189,7 @@ fn should_build(include: &mut Include, config: &Config) -> Result<bool, String> 
             };
             if let Ok(created_time) = metadata.modified() {
                 match fs::metadata(
-                    PathBuf::from(get_target(&config.mode))
+                    PathBuf::from(get_target(config))
                         .join("obj")
                         .join(get_object_name(include)),
                 ) {
@@ -203,11 +216,11 @@ fn build_object(include: &mut Include, config: &Config) -> Result<(), String> {
 
     let command = match &include.kind {
         IncludeType::Local(path) => format!(
-            "gcc -fdiagnostics-color=always -c {} -o {}/obj/{} {}",
-            path.with_extension("c").to_str().unwrap(),
-            get_target(&config.mode),
-            get_object_name(include),
+            "gcc -fdiagnostics-color=always {} -c {} -o {}/obj/{}",
             get_cflags(config),
+            path.with_extension("c").to_str().unwrap(),
+            get_target(config),
+            get_object_name(include),
         ),
         IncludeType::System => "".to_string(),
     };
@@ -242,22 +255,30 @@ pub fn build(build: &Build) -> Result<String, String> {
         Err(e) => return Err(e),
     };
 
-    let path = std::path::PathBuf::from(&config.package.src);
+    let path = if build.benchmark {
+        std::path::PathBuf::from(&config.package.benchmark)
+    } else {
+        std::path::PathBuf::from(&config.package.src)
+    };
     let includes = get_includes(path)?;
 
     create_output_directory(&config)?;
     build_object_files(&includes, &config)?;
 
-    let main_file = format!("{}/main.c", &config.package.src);
+    let main_file = format!(
+        "{}/main.c",
+        if build.benchmark {
+            &config.package.benchmark
+        } else {
+            &config.package.src
+        }
+    );
 
     let build_command = generate_build_command(&includes, &config, &main_file);
 
-    println!(
-        "Building {}/{}",
-        get_target(&config.mode),
-        config.package.name
-    );
+    println!("Building {}/{}", get_target(&config), config.package.name);
 
+    println!("Running command: {}", build_command);
     match command::output(&build_command) {
         Ok(status) => {
             if !status.success() {
@@ -276,7 +297,10 @@ mod tests {
 
     #[test]
     fn test_get_build_options() {
-        let build = Build { release: false };
+        let build = Build {
+            release: false,
+            benchmark: false,
+        };
         let config = get_build_options(&build);
         assert_eq!(config.is_ok(), false);
     }
@@ -285,6 +309,7 @@ mod tests {
     fn test_get_cflags() {
         let config = Config {
             mode: Some(Mode::Debug),
+            benchmark: Some(false),
             package: Package {
                 name: "test".to_string(),
                 src: "src".to_string(),
@@ -317,6 +342,7 @@ mod tests {
     fn test_get_cflags_all() {
         let mut config = Config {
             mode: Some(Mode::Debug),
+            benchmark: Some(false),
             package: Package {
                 name: "test".to_string(),
                 src: "src".to_string(),
@@ -349,8 +375,45 @@ mod tests {
 
     #[test]
     fn test_get_target() {
-        assert_eq!(get_target(&Some(Mode::Debug)), "c_target/debug");
-        assert_eq!(get_target(&Some(Mode::Release)), "c_target/release");
+        let mut config = Config {
+            mode: Some(Mode::Debug),
+            benchmark: Some(false),
+            package: Package {
+                name: "test".to_string(),
+                src: "src".to_string(),
+                ..Default::default()
+            },
+            debug: BuildArgs {
+                debug: true,
+                optimization: 0,
+                warnings: false,
+                pedantic: false,
+                std: "c11".to_string(),
+            },
+            release: BuildArgs {
+                debug: false,
+                optimization: 0,
+                warnings: false,
+                pedantic: false,
+                std: "c11".to_string(),
+            },
+            memory: Memory {
+                leak_check: "".to_string(),
+                show_leak_kinds: "".to_string(),
+                track_origins: false,
+            },
+        };
+
+        assert_eq!(get_target(&config), "c_target/debug");
+        config.mode = Some(Mode::Release);
+        assert_eq!(get_target(&config), "c_target/release");
+
+        config.mode = Some(Mode::Debug);
+        config.benchmark = Some(true);
+
+        assert_eq!(get_target(&config), "c_target/benchmark");
+        config.mode = Some(Mode::Release);
+        assert_eq!(get_target(&config), "c_target/benchmark");
     }
 
     #[test]
@@ -373,6 +436,7 @@ mod tests {
         ];
         let config = Config {
             mode: Some(Mode::Debug),
+            benchmark: Some(false),
             package: Package {
                 name: "test".to_string(),
                 src: "src".to_string(),

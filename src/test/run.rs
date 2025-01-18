@@ -9,7 +9,7 @@ pub fn run(build: &Build) -> Result<String, String> {
     build::build(build)?;
 
     let config = get_build_options(build)?;
-    let command = format!("{}/test", get_target(&config.mode));
+    let command = format!("{}/test", get_target(&config));
 
     println!("Running tests...");
     match spawn(&command) {
@@ -24,11 +24,14 @@ pub fn run(build: &Build) -> Result<String, String> {
 pub fn memory_run(build: &Build) -> Result<String, String> {
     build::build(build)?;
 
-    let config = get_build_options(&Build { release: false })?;
+    let config = get_build_options(&Build {
+        release: false,
+        benchmark: false,
+    })?;
     let command = format!(
         "valgrind {} {}/test",
         get_memory_string(&config),
-        get_target(&config.mode),
+        get_target(&config),
     );
 
     println!("Running tests with memory check...");

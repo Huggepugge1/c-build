@@ -73,7 +73,8 @@ fn create_toml(args: &Init) -> Result<(), String> {
     contents.push_str(&format!("name = \"{}\"\n", name));
     contents.push_str("version = \"0.1.0\"\n");
     contents.push_str("authors = [\"Your Name\"]\n");
-    contents.push_str("src = \"src\"\n\n");
+    contents.push_str("src = \"src\"\n");
+    contents.push_str("benchmark = \"benchmark\"\n\n");
 
     contents.push_str("[debug]\n");
     contents.push_str("path = \"c_target/debug/\"\n");
