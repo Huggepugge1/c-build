@@ -153,6 +153,8 @@ pub fn generate_build_command(includes: &Vec<Include>, config: &Config, main_fil
         }
     ));
 
+    command.push_str("-lm");
+
     command
 }
 

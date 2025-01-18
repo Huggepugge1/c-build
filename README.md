@@ -16,51 +16,17 @@ cd c-builder
 cargo install --path .
 ```
 
-## Usage
-### Initializing a new project
+## Basic Usage
 ```bash
 c-builder [options] init [project-name]
-```
-
-### Building the project
-```bash
 c-builder [options] build
+c-builder [options] run
 ```
 
-### Help
-```bash
-c-builder --help
-c-builder help
-```
+See more detailed information in [documentation](./docs/README.md).
 
-### Configuration
-The configuration file is located at `~/.config/c-builder/config.toml`. The default configuration is:
-```toml
-[package]
-name = "Your Project"
-version = "0.1.0"
-authors = ["Your Name"]
-src = "src"
-
-[debug]
-debug = true
-optimization = 0
-warnings = true
-pedantic = true
-std = "c2x"
-
-[release]
-debug = false
-optimization = 3
-warnings = true
-pedantic = false
-std = "c2x"
-
-[memory]
-leak_check = "full"
-show_leak_kinds = "all"
-track_origins = true
-```
+## Configuration
+The configuration file is located at `c-builder.toml`. See [configuration](./docs/README.md#configuration) for more information.
 
 ## Contributing
 Contributions are welcome! Please read the [contribution guidelines](CONTRIBUTING.md) first.
@@ -73,3 +39,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
  - [valgrind](https://www.valgrind.org/)
  - [cargo](https://doc.rust-lang.org/cargo/)
  - [rust](https://www.rust-lang.org/)
+ - [gprof](https://sourceware.org/binutils/docs/gprof/)
