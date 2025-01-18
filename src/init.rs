@@ -89,7 +89,7 @@ fn create_toml(args: &Init) -> Result<(), String> {
     contents.push_str("debug = false\n");
     contents.push_str("optimization = 3\n");
     contents.push_str("warnings = true\n");
-    contents.push_str("pedantic = false\n");
+    contents.push_str("pedantic = true\n");
     contents.push_str("std = \"c2x\"\n\n");
 
     contents.push_str("[memory]\n");
