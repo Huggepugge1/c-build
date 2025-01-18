@@ -3,11 +3,12 @@ use crate::command;
 use crate::includes::{get_includes, Include, IncludeType};
 
 use std::collections::hash_map::DefaultHasher;
+use std::fs;
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 
+use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 use serde::Deserialize;
-use std::fs;
 
 #[derive(Debug, Deserialize, Clone, Copy)]
 pub enum Mode {
@@ -142,7 +143,7 @@ pub fn generate_build_command(includes: &Vec<Include>, config: &Config, main_fil
     command
 }
 
-pub fn create_output_directory(config: &Config) -> Result<Option<String>, String> {
+pub fn create_output_directory(config: &Config) -> Result<(), String> {
     let path = std::path::PathBuf::from(get_target(&config.mode).clone());
     if !path.exists() {
         match fs::create_dir_all(path) {
@@ -153,11 +154,11 @@ pub fn create_output_directory(config: &Config) -> Result<Option<String>, String
     let obj_path = std::path::PathBuf::from(format!("{}/obj", get_target(&config.mode)));
     if !obj_path.exists() {
         match fs::create_dir_all(obj_path) {
-            Ok(_) => Ok(None),
+            Ok(_) => Ok(()),
             Err(e) => Err(format!("Failed to create output directory: {}", e)),
         }
     } else {
-        Ok(None)
+        Ok(())
     }
 }
 
@@ -195,9 +196,9 @@ fn should_build(include: &mut Include, config: &Config) -> Result<bool, String> 
     Ok(true)
 }
 
-fn build_object(include: &mut Include, config: &Config) -> Result<Option<String>, String> {
+fn build_object(include: &mut Include, config: &Config) -> Result<(), String> {
     if !should_build(include, config)? {
-        return Ok(None);
+        return Ok(());
     }
 
     let command = match &include.kind {
@@ -214,40 +215,35 @@ fn build_object(include: &mut Include, config: &Config) -> Result<Option<String>
     match command::output(&command) {
         Ok(status) => {
             if !status.success() {
-                Err(String::from("Failed to build object file: {}"))
+                Err("Failed to build object file: {}".to_string())
             } else {
-                Ok(Some(String::from("Built tests successfully")))
+                Ok(())
             }
         }
         Err(e) => Err(format!("Failed to run command: {}", e)),
     }
 }
 
-pub fn build_object_files(
-    includes: &Vec<Include>,
-    config: &Config,
-) -> Result<Option<String>, String> {
-    for include in includes {
-        match &include.kind {
+pub fn build_object_files(includes: &Vec<Include>, config: &Config) -> Result<(), String> {
+    includes
+        .into_par_iter()
+        .try_for_each(|include| match &include.kind {
             IncludeType::Local(_path) => match build_object(&mut include.clone(), config) {
-                Ok(Some(v)) => println!("{}", v),
-                Ok(None) => (),
-                Err(e) => return Err(e),
+                Ok(_) => Ok(()),
+                Err(e) => Err(format!("Failed to build object files: {}", e)),
             },
-            IncludeType::System => (),
-        }
-    }
-    Ok(None)
+            IncludeType::System => Ok(()),
+        })
 }
 
-pub fn build(build: &Build) -> Result<Option<String>, String> {
+pub fn build(build: &Build) -> Result<String, String> {
     let config: Config = match get_build_options(build) {
         Ok(config) => config,
         Err(e) => return Err(e),
     };
 
     let path = std::path::PathBuf::from(&config.package.src);
-    let includes = get_includes(path);
+    let includes = get_includes(path)?;
 
     create_output_directory(&config)?;
     build_object_files(&includes, &config)?;
@@ -267,7 +263,7 @@ pub fn build(build: &Build) -> Result<Option<String>, String> {
             if !status.success() {
                 Err("Build not successful".to_string())
             } else {
-                Ok(Some("Build successful".to_string()))
+                Ok("Build successful".to_string())
             }
         }
         Err(e) => Err(format!("Failed to run command: {}", e)),

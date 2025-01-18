@@ -102,7 +102,7 @@ fn create_toml(args: &Init) -> Result<(), String> {
     }
 }
 
-pub fn init(args: &Init) -> Result<Option<String>, String> {
+pub fn init(args: &Init) -> Result<String, String> {
     create_dir(&args.path)?;
     create_main_file(&args.path)?;
     create_git_repo(&args.path)?;
@@ -110,5 +110,5 @@ pub fn init(args: &Init) -> Result<Option<String>, String> {
     create_toml(args)?;
     create_test_framework(&args.path)?;
 
-    Ok(Some("Initialized project".to_string()))
+    Ok("Initialized project".to_string())
 }

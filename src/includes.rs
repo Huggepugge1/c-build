@@ -1,7 +1,6 @@
 use std::fs::File;
 use std::io::BufRead;
 use std::path::{Path, PathBuf};
-use std::process::exit;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum IncludeType {
@@ -27,9 +26,9 @@ pub fn get_includes_from_file(
     path: &Path,
     name: &str,
     already_included: &mut Vec<String>,
-) -> Vec<Include> {
+) -> Result<Vec<Include>, String> {
     if already_included.contains(&name.to_string()) {
-        return Vec::new();
+        return Ok(Vec::new());
     }
     already_included.push(name.to_string());
 
@@ -38,8 +37,11 @@ pub fn get_includes_from_file(
     let file = match open_file(&path.join(name)) {
         Ok(file) => file,
         Err(_) => {
-            eprintln!("Failed to open file: {}/{}", path.to_str().unwrap(), name);
-            exit(1);
+            return Err(format!(
+                "Failed to open file: {}/{}",
+                path.to_str().unwrap(),
+                name
+            ));
         }
     };
 
@@ -52,9 +54,6 @@ pub fn get_includes_from_file(
         Ok(_) => true,
         Err(_) => false,
     } {
-        if name == "store.h" {
-            println!("{}", line);
-        }
         if line.starts_with("#include") {
             let include = line
                 .clone()
@@ -83,12 +82,11 @@ pub fn get_includes_from_file(
                 {
                     Ok(path) => path,
                     Err(_) => {
-                        eprintln!(
-                            "Note: Included header file `{}/{}` not found",
+                        return Err(format!(
+                            "Included header file `{}/{}` not found",
                             path.to_str().unwrap(),
                             name
-                        );
-                        continue;
+                        ));
                     }
                 };
 
@@ -111,15 +109,15 @@ pub fn get_includes_from_file(
 
                 includes.append(&mut get_includes_from_file(
                     &relative_path,
-                    PathBuf::from(name).with_extension("c").to_str().unwrap(),
+                    name,
                     already_included,
-                ));
+                )?);
 
                 includes.append(&mut get_includes_from_file(
                     &relative_path,
                     PathBuf::from(name).with_extension("c").to_str().unwrap(),
                     already_included,
-                ));
+                )?);
             } else {
                 includes.push(Include {
                     kind: IncludeType::System,
@@ -129,14 +127,14 @@ pub fn get_includes_from_file(
         }
         line.clear();
     }
-    includes
+    Ok(includes)
 }
 
-pub fn get_includes(path: PathBuf) -> Vec<Include> {
-    let mut includes = get_includes_from_file(&path, "main.c", &mut Vec::new());
+pub fn get_includes(path: PathBuf) -> Result<Vec<Include>, String> {
+    let mut includes = get_includes_from_file(&path, "main.c", &mut Vec::new())?;
     includes.sort();
     includes.dedup();
-    includes
+    Ok(includes)
 }
 
 #[cfg(test)]
@@ -145,8 +143,7 @@ mod tests {
 
     #[test]
     fn test_get_includes() {
-        let includes = get_includes(PathBuf::from("examples/tests/src"));
-        println!("{:?}", includes);
+        let includes = get_includes(PathBuf::from("examples/tests/src")).unwrap();
         assert_eq!(includes.len(), 3);
         assert_eq!(
             includes.contains(&Include {

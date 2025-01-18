@@ -5,7 +5,7 @@ use crate::cli::Build;
 use crate::command::spawn;
 use crate::run::get_memory_string;
 
-pub fn run(build: &Build) -> Result<Option<String>, String> {
+pub fn run(build: &Build) -> Result<String, String> {
     build::build(build)?;
 
     let config = get_build_options(build)?;
@@ -14,14 +14,14 @@ pub fn run(build: &Build) -> Result<Option<String>, String> {
     println!("Running tests...");
     match spawn(&command) {
         Ok(mut process) => match process.wait() {
-            Ok(_) => Ok(None),
+            Ok(_) => Ok(String::new()),
             Err(e) => Err(format!("Failed to wait for command: {}", e)),
         },
         Err(e) => Err(format!("Failed to run tests: {}", e)),
     }
 }
 
-pub fn memory_run(build: &Build) -> Result<Option<String>, String> {
+pub fn memory_run(build: &Build) -> Result<String, String> {
     build::build(build)?;
 
     let config = get_build_options(&Build { release: false })?;
@@ -34,7 +34,7 @@ pub fn memory_run(build: &Build) -> Result<Option<String>, String> {
     println!("Running tests with memory check...");
     match spawn(&command) {
         Ok(mut process) => match process.wait() {
-            Ok(_) => Ok(None),
+            Ok(_) => Ok(String::new()),
             Err(e) => Err(format!("Failed to wait for command: {}", e)),
         },
         Err(e) => Err(format!("Failed to run tests: {}", e)),

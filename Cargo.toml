@@ -5,5 +5,6 @@ edition = "2021"
 
 [dependencies]
 clap = { version = "4.5.23", features = ["derive"] }
+rayon = "1.10.0"
 serde = { version = "1.0.215", features = ["derive"] }
 toml = { version = "0.8.19", features = ["parse"] }

@@ -2,12 +2,8 @@ use crate::build::{build, get_build_options, get_target, Config};
 use crate::cli::Build;
 use crate::command;
 
-pub fn run(args: &Build) -> Result<Option<String>, String> {
-    match build(args) {
-        Ok(Some(v)) => println!("{}", v),
-        Ok(None) => (),
-        Err(e) => return Err(e),
-    }
+pub fn run(args: &Build) -> Result<String, String> {
+    build(args)?;
 
     let config = get_build_options(args)?;
 
@@ -22,7 +18,7 @@ pub fn run(args: &Build) -> Result<Option<String>, String> {
     };
 
     match process.wait() {
-        Ok(_) => Ok(None),
+        Ok(_) => Ok("".to_string()),
         Err(e) => Err(format!("Failed to wait for command: {}", e)),
     }
 }
@@ -49,17 +45,10 @@ pub fn get_memory_string(config: &Config) -> String {
     memory_string
 }
 
-pub fn memory_run(args: &Build) -> Result<Option<String>, String> {
-    match build(args) {
-        Ok(Some(v)) => println!("{}", v),
-        Ok(None) => (),
-        Err(e) => return Err(e),
-    }
+pub fn memory_run(args: &Build) -> Result<String, String> {
+    build(args)?;
 
-    let config = match get_build_options(args) {
-        Ok(config) => config,
-        Err(e) => return Err(e),
-    };
+    let config = get_build_options(args)?;
 
     let memory_string = get_memory_string(&config);
 
@@ -78,7 +67,7 @@ pub fn memory_run(args: &Build) -> Result<Option<String>, String> {
     };
 
     match process.wait() {
-        Ok(_) => Ok(None),
+        Ok(_) => Ok("".to_string()),
         Err(e) => Err(format!("Failed to wait for command: {}", e)),
     }
 }

@@ -7,7 +7,7 @@ use crate::cli::Build;
 use crate::command::output;
 use crate::includes::{get_includes_from_file, Include};
 
-fn get_test_includes() -> Vec<Include> {
+fn get_test_includes() -> Result<Vec<Include>, String> {
     let mut includes = Vec::new();
     let mut include_strings = Vec::new();
     let tests = test_framework::get_tests();
@@ -16,16 +16,11 @@ fn get_test_includes() -> Vec<Include> {
             test.parent().unwrap(),
             test.file_name().unwrap().to_str().unwrap(),
             &mut include_strings,
-        ));
-        includes.append(&mut get_includes_from_file(
-            test.parent().unwrap(),
-            test.file_name().unwrap().to_str().unwrap(),
-            &mut include_strings,
-        ));
+        )?);
     }
     includes.sort();
     includes.dedup();
-    includes
+    Ok(includes)
 }
 
 pub fn build(build: &Build) -> Result<Option<String>, String> {
@@ -35,7 +30,7 @@ pub fn build(build: &Build) -> Result<Option<String>, String> {
     create_output_directory(&config)?;
     test_framework::write_tests_to_file();
 
-    let includes = get_test_includes();
+    let includes = get_test_includes()?;
     build_object_files(&includes, &config)?;
 
     let main_file = "tests/tests.c";
