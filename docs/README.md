@@ -30,7 +30,15 @@ cargo install --path .
 ## Usage
 ### Initializing a new project
 ```bash
-c-builder [options] init [project-name]
+Usage: c-builder init [PATH]
+
+Arguments:
+  [PATH]
+          [default: .]
+
+Options:
+  -h, --help
+          Print help (see a summary with '-h')
 ```
 #### Options available
  - `-h --help`: Display help information
