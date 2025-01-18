@@ -25,8 +25,8 @@ c-builder [options] run
 
 See more detailed information in [documentation](./docs/README.md).
 
-### Configuration
-The configuration file is located at `~/.config/c-builder/config.toml`. See [configuration](./docs/README.md#configuration) for more information.
+## Configuration
+The configuration file is located at `c-builder.toml`. See [configuration](./docs/README.md#configuration) for more information.
 
 ## Contributing
 Contributions are welcome! Please read the [contribution guidelines](CONTRIBUTING.md) first.

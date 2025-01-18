@@ -28,17 +28,20 @@ cargo install --path .
 ```
 
 ## Usage
-### Initializing a new project
+### Debug vs Release Mode
+The project can be built in either debug or release mode.
+Debug mode is the default mode and is used for development.
+Release mode is used for production and has optimizations enabled and strips debug information.
+You can specify the release mode with the `-r` or `--release` flag.
+
+#### Notes
+ - Memory leak detection is available for both debug and release mode.
+ - Debug mode is used by default in the tests but this can be changed with the `-r` flag.
+ - The benchmarks are always built in release mode.
+
+### Initializing a New Project
 ```bash
-Usage: c-builder init [PATH]
-
-Arguments:
-  [PATH]
-          [default: .]
-
-Options:
-  -h, --help
-          Print help (see a summary with '-h')
+c-builder [options] init [project-name]
 ```
 #### Options available
  - `-h --help`: Display help information
@@ -70,7 +73,7 @@ c-builder [options] test
  - `-h --help`: Display help information
 
 ## Configuration
-The configuration file is located at `~/.config/c-builder/config.toml`.
+The configuration file is located at `c-builder.toml`.
 All fields shown are required.
 The default configuration is:
 ```toml
