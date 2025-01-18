@@ -90,7 +90,7 @@ name = "Your Project"
 version = "0.1.0"
 authors = ["Your Names"]
 src = "src"
-benchmarks = "benchmarks"
+benchmark = "benchmark"
     
 [debug]
 debug = true
