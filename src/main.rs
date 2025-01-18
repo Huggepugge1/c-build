@@ -22,7 +22,7 @@ fn main() {
         cli::Commands::Clean => clean::clean(),
     } {
         Ok(v) => {
-            if let Some(v) = v {
+            if !v.is_empty() {
                 println!("{}", v);
                 std::process::exit(0);
             }

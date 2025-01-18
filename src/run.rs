@@ -2,16 +2,16 @@ use crate::build::{build, get_build_options, get_target, Config};
 use crate::cli::Build;
 use crate::command;
 
-pub fn run(args: &Build) -> Result<Option<String>, String> {
-    match build(args) {
-        Ok(Some(v)) => println!("{}", v),
-        Ok(None) => (),
-        Err(e) => return Err(e),
-    }
+pub fn run(args: &Build) -> Result<String, String> {
+    build(args)?;
 
     let config = get_build_options(args)?;
 
-    let command = format!("./{}/{}", get_target(&config.mode), config.package.name);
+    let command = if args.benchmark {
+        format!("{}/benchmark", get_target(&config))
+    } else {
+        format!("{}/{}", get_target(&config), &config.package.name)
+    };
 
     println!("Running {}", command);
     let mut process = match command::spawn(&command) {
@@ -22,7 +22,25 @@ pub fn run(args: &Build) -> Result<Option<String>, String> {
     };
 
     match process.wait() {
-        Ok(_) => Ok(None),
+        Ok(_) => {
+            if args.benchmark {
+                println!("--------------------------------------------------------");
+
+                match command::spawn(&format!("gprof --brief {}/benchmark", get_target(&config))) {
+                    Ok(mut process) => match process.wait() {
+                        Ok(_) => Ok("".to_string()),
+                        Err(e) => {
+                            return Err(format!("Failed to wait for command: {}", e));
+                        }
+                    },
+                    Err(error) => {
+                        return Err(format!("Failed to run command: {}", error));
+                    }
+                }
+            } else {
+                Ok("".to_string())
+            }
+        }
         Err(e) => Err(format!("Failed to wait for command: {}", e)),
     }
 }
@@ -49,26 +67,24 @@ pub fn get_memory_string(config: &Config) -> String {
     memory_string
 }
 
-pub fn memory_run(args: &Build) -> Result<Option<String>, String> {
-    match build(args) {
-        Ok(Some(v)) => println!("{}", v),
-        Ok(None) => (),
-        Err(e) => return Err(e),
-    }
+pub fn memory_run(args: &Build) -> Result<String, String> {
+    build(args)?;
 
-    let config = match get_build_options(args) {
-        Ok(config) => config,
-        Err(e) => return Err(e),
-    };
+    let config = get_build_options(args)?;
 
     let memory_string = get_memory_string(&config);
 
     let command = format!(
         "valgrind {} ./{}/{}",
         memory_string,
-        get_target(&config.mode),
-        config.package.name
+        get_target(&config),
+        if args.benchmark {
+            "benchmark"
+        } else {
+            &config.package.name
+        }
     );
+
     println!("Running {}", command);
     let mut process = match command::spawn(&command) {
         Ok(process) => process,
@@ -78,7 +94,7 @@ pub fn memory_run(args: &Build) -> Result<Option<String>, String> {
     };
 
     match process.wait() {
-        Ok(_) => Ok(None),
+        Ok(_) => Ok("".to_string()),
         Err(e) => Err(format!("Failed to wait for command: {}", e)),
     }
 }
@@ -93,6 +109,7 @@ mod test {
         let config = Config {
             package: Default::default(),
             mode: Some(Mode::Debug),
+            benchmark: Some(false),
             debug: Default::default(),
             release: Default::default(),
             memory: Memory {
@@ -114,6 +131,7 @@ mod test {
         let config = Config {
             package: Default::default(),
             mode: Some(Mode::Debug),
+            benchmark: Some(false),
             debug: Default::default(),
             release: Default::default(),
             memory: Memory {

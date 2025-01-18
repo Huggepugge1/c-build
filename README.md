@@ -3,11 +3,11 @@ A simple C project builder for Linux.
 
 ## Features
  - [x] Initialize a new C project
- - [x] Build the project
+ - [x] Build the project with parallel jobs
  - [x] Run the project
- - [x] Run the project with memory checks
  - [x] Clean the project
- - [ ] Run tests on the project
+ - [x] Run tests on the project
+ - [x] Run benchmarks on the project
 
 ## Installation
 ```bash

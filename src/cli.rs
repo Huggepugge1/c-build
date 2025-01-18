@@ -33,6 +33,8 @@ pub enum Commands {
 pub struct Build {
     #[arg(short, long, default_value_t = false)]
     pub release: bool,
+    #[arg(short, long, default_value_t = false)]
+    pub benchmark: bool,
 }
 
 #[derive(Parser, Debug)]
