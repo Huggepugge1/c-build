@@ -33,7 +33,7 @@ c-builder --help
 c-builder help
 ```
 
-See more detailed information in [documentation](docs/main.md).
+See more detailed information in [documentation](./docs/README.md).
 
 ### Configuration
 The configuration file is located at `~/.config/c-builder/config.toml`. The default configuration is:
