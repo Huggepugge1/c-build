@@ -94,7 +94,25 @@ pub fn memory_run(args: &Build) -> Result<String, String> {
     };
 
     match process.wait() {
-        Ok(_) => Ok("".to_string()),
+        Ok(_) => {
+            if args.benchmark {
+                println!("--------------------------------------------------------");
+
+                match command::spawn(&format!("gprof --brief {}/benchmark", get_target(&config))) {
+                    Ok(mut process) => match process.wait() {
+                        Ok(_) => Ok("".to_string()),
+                        Err(e) => {
+                            return Err(format!("Failed to wait for command: {}", e));
+                        }
+                    },
+                    Err(error) => {
+                        return Err(format!("Failed to run command: {}", error));
+                    }
+                }
+            } else {
+                Ok("".to_string())
+            }
+        }
         Err(e) => Err(format!("Failed to wait for command: {}", e)),
     }
 }
