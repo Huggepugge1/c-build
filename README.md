@@ -16,54 +16,17 @@ cd c-builder
 cargo install --path .
 ```
 
-## Usage
-### Initializing a new project
+## Basic Usage
 ```bash
 c-builder [options] init [project-name]
-```
-
-### Building the project
-```bash
 c-builder [options] build
-```
-
-### Help
-```bash
-c-builder --help
-c-builder help
+c-builder [options] run
 ```
 
 See more detailed information in [documentation](./docs/README.md).
 
 ### Configuration
-The configuration file is located at `~/.config/c-builder/config.toml`. The default configuration is:
-```toml
-[package]
-name = "Your Project"
-version = "0.1.0"
-authors = ["Your Names"]
-src = "src"
-benchmarks = "benchmarks"
-
-[debug]
-debug = true
-optimization = 0
-warnings = true
-pedantic = true
-std = "c2x"
-
-[release]
-debug = false
-optimization = 3
-warnings = true
-pedantic = false
-std = "c2x"
-
-[memory]
-leak_check = "full"
-show_leak_kinds = "all"
-track_origins = true
-```
+The configuration file is located at `~/.config/c-builder/config.toml`. See [configuration](./docs/README.md#configuration) for more information.
 
 ## Contributing
 Contributions are welcome! Please read the [contribution guidelines](CONTRIBUTING.md) first.

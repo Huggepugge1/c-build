@@ -1,14 +1,18 @@
 use super::build;
 
 use crate::build::{get_build_options, get_target};
-use crate::cli::Build;
+use crate::cli::{Build, Test};
 use crate::command::spawn;
 use crate::run::get_memory_string;
 
-pub fn run(build: &Build) -> Result<String, String> {
-    build::build(build)?;
+pub fn run(test: &Test) -> Result<String, String> {
+    let build = Build {
+        release: test.release,
+        benchmark: false,
+    };
+    build::build(&build)?;
 
-    let config = get_build_options(build)?;
+    let config = get_build_options(&build)?;
     let command = format!("{}/test", get_target(&config));
 
     println!("Running tests...");
@@ -21,13 +25,14 @@ pub fn run(build: &Build) -> Result<String, String> {
     }
 }
 
-pub fn memory_run(build: &Build) -> Result<String, String> {
-    build::build(build)?;
-
-    let config = get_build_options(&Build {
-        release: false,
+pub fn memory_run(test: &Test) -> Result<String, String> {
+    let build = Build {
+        release: test.release,
         benchmark: false,
-    })?;
+    };
+    build::build(&build)?;
+
+    let config = get_build_options(&build)?;
     let command = format!(
         "valgrind {} {}/test",
         get_memory_string(&config),
