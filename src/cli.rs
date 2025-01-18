@@ -31,9 +31,9 @@ pub enum Commands {
 
 #[derive(Parser, Debug)]
 pub struct Build {
-    #[arg(short, long, default_value_t = false)]
+    #[arg(short, long, default_value_t = false, help = "Builds in release mode")]
     pub release: bool,
-    #[arg(short, long, default_value_t = false)]
+    #[arg(short, long, default_value_t = false, help = "Run the benchmarks")]
     pub benchmark: bool,
 }
 
