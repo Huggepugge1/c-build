@@ -24,19 +24,7 @@ pub fn run(args: &Build) -> Result<String, String> {
     match process.wait() {
         Ok(_) => {
             if args.benchmark {
-                println!("--------------------------------------------------------");
-
-                match command::spawn(&format!("gprof --brief {}/benchmark", get_target(&config))) {
-                    Ok(mut process) => match process.wait() {
-                        Ok(_) => Ok("".to_string()),
-                        Err(e) => {
-                            return Err(format!("Failed to wait for command: {}", e));
-                        }
-                    },
-                    Err(error) => {
-                        return Err(format!("Failed to run command: {}", error));
-                    }
-                }
+                print_benchmark(&config)
             } else {
                 Ok("".to_string())
             }
@@ -96,24 +84,24 @@ pub fn memory_run(args: &Build) -> Result<String, String> {
     match process.wait() {
         Ok(_) => {
             if args.benchmark {
-                println!("--------------------------------------------------------");
-
-                match command::spawn(&format!("gprof --brief {}/benchmark", get_target(&config))) {
-                    Ok(mut process) => match process.wait() {
-                        Ok(_) => Ok("".to_string()),
-                        Err(e) => {
-                            return Err(format!("Failed to wait for command: {}", e));
-                        }
-                    },
-                    Err(error) => {
-                        return Err(format!("Failed to run command: {}", error));
-                    }
-                }
+                print_benchmark(&config)
             } else {
                 Ok("".to_string())
             }
         }
         Err(e) => Err(format!("Failed to wait for command: {}", e)),
+    }
+}
+
+fn print_benchmark(config: &Config) -> Result<String, String> {
+    println!("--------------------------------------------------------");
+
+    match command::spawn(&format!("gprof --brief {}/benchmark", get_target(config))) {
+        Ok(mut process) => match process.wait() {
+            Ok(_) => Ok("".to_string()),
+            Err(e) => Err(format!("Failed to wait for command: {}", e)),
+        },
+        Err(error) => Err(format!("Failed to run command: {}", error)),
     }
 }
 
