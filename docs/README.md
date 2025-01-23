@@ -77,6 +77,7 @@ c-builder [options] run
 c-builder [options] test
 ```
 #### Options available
+ - `[-s --single] <test_name>`: Run a single test
  - `-r --release`: Run the tests in release mode
  - `-h --help`: Display help information
 

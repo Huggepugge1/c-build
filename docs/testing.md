@@ -1,6 +1,7 @@
 # Testing
 `c-builder` provides a simple way to run tests for your project.
 Simply run `c-builder test` to run the tests.
+To run a specific test, run `c-builder test --single <test_name>`.
 
 ## The testing framework
 `c-builder` uses its own testing framework to run tests.
