@@ -5,15 +5,23 @@ use crate::cli::{Build, Test};
 use crate::command::spawn;
 use crate::run::get_memory_string;
 
+fn get_test(test: &Test) -> String {
+    if let Some(single) = &test.single {
+        single.clone()
+    } else {
+        "test".to_string()
+    }
+}
+
 pub fn run(test: &Test) -> Result<String, String> {
     let build = Build {
         release: test.release,
         benchmark: false,
     };
-    build::build(&build)?;
+    build::build(&build, test)?;
 
     let config = get_build_options(&build)?;
-    let command = format!("{}/test", get_target(&config));
+    let command = format!("{}/{}", get_target(&config), get_test(test));
 
     println!("Running tests...");
     match spawn(&command) {
@@ -30,13 +38,14 @@ pub fn memory_run(test: &Test) -> Result<String, String> {
         release: test.release,
         benchmark: false,
     };
-    build::build(&build)?;
+    build::build(&build, test)?;
 
     let config = get_build_options(&build)?;
     let command = format!(
-        "valgrind {} {}/test",
+        "valgrind {} {}/{}",
         get_memory_string(&config),
         get_target(&config),
+        get_test(test),
     );
 
     println!("Running tests with memory check...");

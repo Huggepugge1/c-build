@@ -1,4 +1,4 @@
-use crate::cli::Build;
+use crate::cli::{Build, Test};
 use crate::command;
 use crate::includes::{get_includes, Include, IncludeType};
 
@@ -126,7 +126,12 @@ fn get_object_name(include: &Include) -> String {
     }
 }
 
-pub fn generate_build_command(includes: &Vec<Include>, config: &Config, main_file: &str) -> String {
+pub fn generate_build_command(
+    includes: &Vec<Include>,
+    config: &Config,
+    main_file: &str,
+    test: Option<&Test>,
+) -> String {
     let mut command = format!("gcc {}{} ", &get_cflags(config), main_file);
     for include in includes {
         match &include.kind {
@@ -144,8 +149,12 @@ pub fn generate_build_command(includes: &Vec<Include>, config: &Config, main_fil
     command.push_str(&format!(
         "-o {}/{} ",
         get_target(config),
-        if main_file.ends_with("tests.c") {
-            "test"
+        if let Some(test) = test {
+            if let Some(single) = &test.single {
+                single
+            } else {
+                "test"
+            }
         } else if config.benchmark.unwrap() {
             "benchmark"
         } else {
@@ -276,7 +285,7 @@ pub fn build(build: &Build) -> Result<String, String> {
         }
     );
 
-    let build_command = generate_build_command(&includes, &config, &main_file);
+    let build_command = generate_build_command(&includes, &config, &main_file, None);
 
     println!("Building {}/{}", get_target(&config), config.package.name);
 
@@ -465,7 +474,7 @@ mod tests {
             },
         };
         assert_eq!(
-            generate_build_command(&includes, &config, "src/main.c"),
+            generate_build_command(&includes, &config, "src/main.c", None),
             "gcc -O0 -g -std=c11 src/main.c c_target/debug/obj/5868638564572808266.o c_target/debug/obj/10537904563806491211.o -o c_target/debug/test -lm"
         );
     }
