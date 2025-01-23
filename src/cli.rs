@@ -58,6 +58,8 @@ pub struct Test {
         help = "Run tests in release mode"
     )]
     pub release: bool,
+    #[arg(short, long, help = "Run a specific test")]
+    pub single: Option<String>,
 }
 
 #[derive(Parser, Debug)]

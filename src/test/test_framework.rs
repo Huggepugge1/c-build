@@ -1,3 +1,5 @@
+use crate::cli::Test;
+
 use std::io::Write;
 use std::path::PathBuf;
 
@@ -93,31 +95,42 @@ pub fn get_test_files() -> Vec<PathBuf> {
     test_files
 }
 
-fn get_tests_from_files(test_files: Vec<PathBuf>) -> Tests {
+fn get_tests_from_files(test_files: Vec<PathBuf>, test: &Test) -> Tests {
     let mut tests = Vec::new();
     for file in &test_files {
         let file = std::fs::read_to_string(file).unwrap();
         for line in file.lines() {
             if line.starts_with("TEST(") {
-                tests.push(
-                    line.split("(").collect::<Vec<&str>>()[1]
-                        .split(")")
-                        .collect::<Vec<&str>>()[0]
-                        .to_string(),
-                );
+                if let Some(single) = &test.single {
+                    if line.contains(single) {
+                        tests.push(
+                            line.split("(").collect::<Vec<&str>>()[1]
+                                .split(")")
+                                .collect::<Vec<&str>>()[0]
+                                .to_string(),
+                        );
+                    }
+                } else {
+                    tests.push(
+                        line.split("(").collect::<Vec<&str>>()[1]
+                            .split(")")
+                            .collect::<Vec<&str>>()[0]
+                            .to_string(),
+                    );
+                }
             }
         }
     }
     Tests { test_files, tests }
 }
 
-pub fn get_tests() -> Tests {
+pub fn get_tests(test: &Test) -> Tests {
     let test_files = get_test_files();
-    get_tests_from_files(test_files)
+    get_tests_from_files(test_files, test)
 }
 
-pub fn write_tests_to_file() {
-    let tests = get_tests();
+pub fn write_tests_to_file(test: &Test) {
+    let tests = get_tests(test);
     let test_count = tests.tests.len();
     let mut file = std::fs::File::create("tests/tests.c").unwrap();
     file.write_all("#include \"test_framework.h\"\n\n".as_bytes())
