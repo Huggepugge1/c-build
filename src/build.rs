@@ -127,7 +127,7 @@ fn get_object_name(include: &Include) -> String {
 }
 
 pub fn generate_build_command(includes: &Vec<Include>, config: &Config, main_file: &str) -> String {
-    let mut command = format!("gcc {} {} ", &get_cflags(config), main_file);
+    let mut command = format!("gcc {}{} ", &get_cflags(config), main_file);
     for include in includes {
         match &include.kind {
             IncludeType::Local(_) => {
@@ -466,7 +466,7 @@ mod tests {
         };
         assert_eq!(
             generate_build_command(&includes, &config, "src/main.c"),
-            "gcc src/main.c c_target/debug/obj/5868638564572808266.o c_target/debug/obj/10537904563806491211.o -o c_target/debug/test -O0 -g -std=c11 "
+            "gcc -O0 -g -std=c11 src/main.c c_target/debug/obj/5868638564572808266.o c_target/debug/obj/10537904563806491211.o -o c_target/debug/test -lm"
         );
     }
 }

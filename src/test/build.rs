@@ -14,7 +14,7 @@ fn get_test_includes() -> Result<Vec<Include>, String> {
     for test in tests.test_files {
         includes.append(&mut get_includes_from_file(
             test.parent().unwrap(),
-            test.file_name().unwrap().to_str().unwrap(),
+            test.file_name().unwrap().to_string_lossy().to_string(),
             &mut include_strings,
         )?);
     }
