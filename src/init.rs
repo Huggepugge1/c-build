@@ -2,7 +2,6 @@ use crate::cli::Init;
 
 use crate::test::test_framework::create_test_framework;
 
-const SRC_DIR: &str = "src/";
 const MAIN_FILE: &str = "src/main.c";
 
 const MAIN_FILE_CONTENTS: &str = "#include <stdio.h>
@@ -12,9 +11,31 @@ int main() {
     return 0;
 }";
 
-fn create_dir(path: &str) -> Result<(), String> {
-    if !std::path::Path::new(path).exists() {
+fn create_dirs(path: &str) -> Result<(), String> {
+    let path = std::path::Path::new(path);
+    if !path.exists() {
         match std::fs::create_dir(path) {
+            Ok(_) => (),
+            Err(e) => return Err(format!("Failed to create directory: {}", e)),
+        }
+    }
+    let src = path.join("src");
+    if !src.exists() {
+        match std::fs::create_dir(src) {
+            Ok(_) => (),
+            Err(e) => return Err(format!("Failed to create directory: {}", e)),
+        }
+    }
+    let tests = path.join("tests");
+    if !tests.exists() {
+        match std::fs::create_dir(tests) {
+            Ok(_) => (),
+            Err(e) => return Err(format!("Failed to create directory: {}", e)),
+        }
+    }
+    let benchmark = path.join("benchmark");
+    if !benchmark.exists() {
+        match std::fs::create_dir(benchmark) {
             Ok(_) => Ok(()),
             Err(e) => Err(format!("Failed to create directory: {}", e)),
         }
@@ -24,10 +45,6 @@ fn create_dir(path: &str) -> Result<(), String> {
 }
 
 fn create_main_file(path: &str) -> Result<(), String> {
-    let src_path = format!("{}/{}", path, SRC_DIR);
-
-    create_dir(&src_path)?;
-
     let main_file = format!("{}/{}", path, MAIN_FILE);
 
     match std::fs::write(main_file, MAIN_FILE_CONTENTS) {
@@ -104,7 +121,7 @@ fn create_toml(args: &Init) -> Result<(), String> {
 }
 
 pub fn init(args: &Init) -> Result<String, String> {
-    create_dir(&args.path)?;
+    create_dirs(&args.path)?;
     create_main_file(&args.path)?;
     create_git_repo(&args.path)?;
     create_git_ignore(&args.path)?;

@@ -44,6 +44,7 @@ pub struct BuildArgs {
     warnings: bool,
     pedantic: bool,
     std: String,
+    asm: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -69,6 +70,12 @@ pub fn get_build_options(build: &Build) -> Result<Config, String> {
     });
 
     config.benchmark = Some(build.benchmark);
+    if build.benchmark {
+        config.mode = Some(Mode::Release);
+    }
+
+    config.debug.asm = Some(build.asm);
+    config.release.asm = Some(build.asm);
 
     Ok(config)
 }
@@ -93,6 +100,10 @@ fn get_cflags(config: &Config) -> String {
 
     if config.benchmark.unwrap() {
         cflags.push_str("-pg ");
+    }
+
+    if build.asm == Some(true) {
+        cflags.push_str("-S ");
     }
 
     cflags
@@ -126,28 +137,57 @@ fn get_object_name(include: &Include) -> String {
     }
 }
 
+fn get_asm_name(include: &Include) -> String {
+    match &include.kind {
+        IncludeType::Local(path) => {
+            path.file_name()
+                .and_then(|name| name.to_str())
+                .map(|name| {
+                    let mut hasher = DefaultHasher::new();
+                    name.hash(&mut hasher);
+                    hasher.finish().to_string()
+                })
+                .unwrap()
+                + ".s"
+        }
+        IncludeType::System => unreachable!(),
+    }
+}
+
 pub fn generate_build_command(
     includes: &Vec<Include>,
     config: &Config,
     main_file: &str,
     test: Option<&Test>,
 ) -> String {
+    let build = match config.mode.unwrap() {
+        Mode::Debug => &config.debug,
+        Mode::Release => &config.release,
+    };
     let mut command = format!("gcc {}{} ", &get_cflags(config), main_file);
-    for include in includes {
-        match &include.kind {
-            IncludeType::Local(_) => {
-                command.push_str(&format!(
-                    "{}/obj/{} ",
-                    get_target(config),
-                    get_object_name(include)
-                ));
+    if !build.asm.unwrap() {
+        for include in includes {
+            match &include.kind {
+                IncludeType::Local(_) => match build.asm {
+                    Some(true) => command.push_str(&format!(
+                        "{}/asm/{} ",
+                        get_target(config),
+                        get_asm_name(include)
+                    )),
+                    Some(false) => command.push_str(&format!(
+                        "{}/obj/{} ",
+                        get_target(config),
+                        get_object_name(include)
+                    )),
+                    _ => unreachable!(),
+                },
+                IncludeType::System => (),
             }
-            IncludeType::System => (),
         }
     }
 
     command.push_str(&format!(
-        "-o {}/{} ",
+        "-o {}/{}{} ",
         get_target(config),
         if let Some(test) = test {
             if let Some(single) = &test.single {
@@ -159,7 +199,8 @@ pub fn generate_build_command(
             "benchmark"
         } else {
             &config.package.name
-        }
+        },
+        if build.asm.unwrap() { ".s" } else { "" }
     ));
 
     command.push_str("-lm");
@@ -168,6 +209,10 @@ pub fn generate_build_command(
 }
 
 pub fn create_output_directory(config: &Config) -> Result<(), String> {
+    let build = match config.mode.unwrap() {
+        Mode::Debug => &config.debug,
+        Mode::Release => &config.release,
+    };
     let path = std::path::PathBuf::from(get_target(config).clone());
     if !path.exists() {
         match fs::create_dir_all(path) {
@@ -175,7 +220,11 @@ pub fn create_output_directory(config: &Config) -> Result<(), String> {
             Err(e) => return Err(format!("Failed to create output directory: {}", e)),
         }
     }
-    let obj_path = std::path::PathBuf::from(format!("{}/obj", get_target(config)));
+    let obj_path = std::path::PathBuf::from(format!(
+        "{}/{}",
+        get_target(config),
+        if build.asm.unwrap() { "asm" } else { "obj" }
+    ));
     if !obj_path.exists() {
         match fs::create_dir_all(obj_path) {
             Ok(_) => Ok(()),
@@ -187,6 +236,10 @@ pub fn create_output_directory(config: &Config) -> Result<(), String> {
 }
 
 fn should_build(include: &mut Include, config: &Config) -> Result<bool, String> {
+    let build = match config.mode.unwrap() {
+        Mode::Debug => &config.debug,
+        Mode::Release => &config.release,
+    };
     match &include.kind {
         IncludeType::System => return Ok(false),
         IncludeType::Local(path) => {
@@ -199,11 +252,15 @@ fn should_build(include: &mut Include, config: &Config) -> Result<bool, String> 
                 Err(e) => return Err(format!("Failed to fetch metadata for file: {}", e)),
             };
             if let Ok(created_time) = metadata.modified() {
-                match fs::metadata(
+                match fs::metadata(if build.asm.unwrap() {
+                    PathBuf::from(get_target(config))
+                        .join("asm")
+                        .join(get_asm_name(include))
+                } else {
                     PathBuf::from(get_target(config))
                         .join("obj")
-                        .join(get_object_name(include)),
-                ) {
+                        .join(get_object_name(include))
+                }) {
                     Ok(metadata) => {
                         if let Ok(obj_created_time) = metadata.modified() {
                             return Ok(created_time > obj_created_time);
@@ -224,14 +281,23 @@ fn build_object(include: &mut Include, config: &Config) -> Result<(), String> {
     if !should_build(include, config)? {
         return Ok(());
     }
+    let build = match config.mode.unwrap() {
+        Mode::Debug => &config.debug,
+        Mode::Release => &config.release,
+    };
 
     let command = match &include.kind {
         IncludeType::Local(path) => format!(
-            "gcc -fdiagnostics-color=always {} -c {} -o {}/obj/{}",
+            "gcc -fdiagnostics-color=always {} -c {} -o {}/{}/{}",
             get_cflags(config),
             path.with_extension("c").to_str().unwrap(),
             get_target(config),
-            get_object_name(include),
+            if build.asm.unwrap() { "asm" } else { "obj" },
+            if build.asm.unwrap() {
+                get_asm_name(include)
+            } else {
+                get_object_name(include)
+            },
         ),
         IncludeType::System => "".to_string(),
     };
@@ -311,6 +377,7 @@ mod tests {
         let build = Build {
             release: false,
             benchmark: false,
+            asm: false,
         };
         let config = get_build_options(&build);
         assert_eq!(config.is_ok(), false);
@@ -332,6 +399,7 @@ mod tests {
                 warnings: false,
                 pedantic: false,
                 std: "c11".to_string(),
+                asm: Some(false),
             },
             release: BuildArgs {
                 debug: false,
@@ -339,6 +407,7 @@ mod tests {
                 warnings: false,
                 pedantic: false,
                 std: "c11".to_string(),
+                asm: Some(false),
             },
             memory: Memory {
                 leak_check: "".to_string(),
@@ -365,6 +434,7 @@ mod tests {
                 warnings: true,
                 pedantic: true,
                 std: "c11".to_string(),
+                asm: Some(false),
             },
             release: BuildArgs {
                 debug: false,
@@ -372,6 +442,7 @@ mod tests {
                 warnings: true,
                 pedantic: true,
                 std: "c11".to_string(),
+                asm: Some(false),
             },
             memory: Memory {
                 leak_check: "".to_string(),
@@ -400,6 +471,7 @@ mod tests {
                 warnings: false,
                 pedantic: false,
                 std: "c11".to_string(),
+                asm: Some(false),
             },
             release: BuildArgs {
                 debug: false,
@@ -407,6 +479,7 @@ mod tests {
                 warnings: false,
                 pedantic: false,
                 std: "c11".to_string(),
+                asm: Some(false),
             },
             memory: Memory {
                 leak_check: "".to_string(),
@@ -459,6 +532,7 @@ mod tests {
                 warnings: false,
                 pedantic: false,
                 std: "c11".to_string(),
+                asm: Some(false),
             },
             release: BuildArgs {
                 debug: false,
@@ -466,6 +540,7 @@ mod tests {
                 warnings: false,
                 pedantic: false,
                 std: "c11".to_string(),
+                asm: Some(false),
             },
             memory: Memory {
                 leak_check: "".to_string(),

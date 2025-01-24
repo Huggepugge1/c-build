@@ -1,0 +1,27 @@
+[package]
+name = "fib"
+version = "0.1.0"
+authors = ["Your Name"]
+src = "src"
+benchmark = "benchmark"
+
+[debug]
+path = "c_target/debug/"
+debug = true
+optimization = 0
+warnings = true
+pedantic = true
+std = "c2x"
+
+[release]
+path = "c_target/release/"
+debug = false
+optimization = 0
+warnings = true
+pedantic = true
+std = "c2x"
+
+[memory]
+leak_check = "full"
+show_leak_kinds = "all"
+track_origins = true

@@ -1,11 +1,17 @@
 use crate::build::{build, get_build_options, get_target, Config};
-use crate::cli::Build;
+use crate::cli::{Build, Run};
 use crate::command;
 
-pub fn run(args: &Build) -> Result<String, String> {
-    build(args)?;
+pub fn run(args: &Run) -> Result<String, String> {
+    let build_args = Build {
+        release: args.release,
+        benchmark: args.benchmark,
+        asm: false,
+    };
 
-    let config = get_build_options(args)?;
+    build(&build_args)?;
+
+    let config = get_build_options(&build_args)?;
 
     let command = if args.benchmark {
         format!("{}/benchmark", get_target(&config))
@@ -55,10 +61,16 @@ pub fn get_memory_string(config: &Config) -> String {
     memory_string
 }
 
-pub fn memory_run(args: &Build) -> Result<String, String> {
-    build(args)?;
+pub fn memory_run(args: &Run) -> Result<String, String> {
+    let build_args = Build {
+        release: args.release,
+        benchmark: args.benchmark,
+        asm: false,
+    };
 
-    let config = get_build_options(args)?;
+    build(&build_args)?;
+
+    let config = get_build_options(&build_args)?;
 
     let memory_string = get_memory_string(&config);
 

@@ -17,6 +17,7 @@ pub fn run(test: &Test) -> Result<String, String> {
     let build = Build {
         release: test.release,
         benchmark: false,
+        asm: false,
     };
     build::build(&build, test)?;
 
@@ -37,6 +38,7 @@ pub fn memory_run(test: &Test) -> Result<String, String> {
     let build = Build {
         release: test.release,
         benchmark: false,
+        asm: false,
     };
     build::build(&build, test)?;
 
