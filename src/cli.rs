@@ -16,9 +16,9 @@ pub enum Commands {
     #[command(about, long_about = Some("Builds the project"))]
     Build(Build),
     #[command(about, long_about = Some("Runs the project"))]
-    Run(Build),
+    Run(Run),
     #[command(about, long_about = Some("Runs the project with memory testing"))]
-    MemoryRun(Build),
+    MemoryRun(Run),
     #[command(about, long_about = Some("Run the tests"))]
     Test(Test),
     #[command(about, long_about = Some("Run the tests with memory testing"))]
@@ -31,6 +31,28 @@ pub enum Commands {
 
 #[derive(Parser, Debug)]
 pub struct Build {
+    #[arg(
+        short,
+        long,
+        default_value_t = false,
+        help = "Builds in release mode",
+        conflicts_with = "benchmark"
+    )]
+    pub release: bool,
+    #[arg(
+        short,
+        long,
+        default_value_t = false,
+        help = "Run the benchmarks",
+        conflicts_with = "release"
+    )]
+    pub benchmark: bool,
+    #[arg(short, long, default_value_t = false, help = "Compile to assembly")]
+    pub asm: bool,
+}
+
+#[derive(Parser, Debug)]
+pub struct Run {
     #[arg(
         short,
         long,

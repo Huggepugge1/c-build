@@ -14,11 +14,11 @@ fn main() {
 
     match match command.command {
         cli::Commands::Build(build) => build::build(&build),
-        cli::Commands::Run(build) => run::run(&build),
-        cli::Commands::MemoryRun(build) => run::memory_run(&build),
-        cli::Commands::Test(build) => test::run::run(&build),
-        cli::Commands::MemoryTest(build) => test::run::memory_run(&build),
-        cli::Commands::Init(command) => init::init(&command),
+        cli::Commands::Run(run) => run::run(&run),
+        cli::Commands::MemoryRun(run) => run::memory_run(&run),
+        cli::Commands::Test(test) => test::run::run(&test),
+        cli::Commands::MemoryTest(test) => test::run::memory_run(&test),
+        cli::Commands::Init(init) => init::init(&init),
         cli::Commands::Clean => clean::clean(),
     } {
         Ok(v) => {

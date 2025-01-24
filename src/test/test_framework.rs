@@ -181,7 +181,6 @@ pub fn write_tests_to_file(test: &Test) {
 
 pub fn create_test_framework(path: &str) -> Result<(), String> {
     let dir = PathBuf::from(format!("{}/tests", path));
-    std::fs::create_dir_all(&dir).unwrap();
     let test_framework_c = dir.join("test_framework.c");
     let test_framework_h = dir.join("test_framework.h");
 
